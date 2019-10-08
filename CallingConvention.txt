@@ -1,1 +1,14 @@
+The Calling Convention of e6
 
+When making a call
+1.	First number goes into RAX, second number goes into RCX
+2.	First string goes into RSI, second string goes into RDI
+3.	First buffer goes into RBX, second buffer goes into RBP
+4.	RDX is used when there is a third parameter of a given type. For example, use RDX as spare to pass in a third number, string, or buffer.
+5.	If there are too many of a given parameter type, then pass all parameters in a buffer pointed to in RBX
+6.	When there is an error, the carry flag is set, RAX contains the error code and RSI points to the error string
+7.	Clear the carry flag on success.
+8.	Strings are prefixed by their lengths.
+9.	RAX, RBX, RCX, RDX, RSI, RDI, and RBP are volatile.
+10.	R8 - R15 are preserved across calls
+11.	The stack is used for making calls and as temporary working space
