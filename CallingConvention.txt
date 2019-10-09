@@ -1,14 +1,27 @@
 The Calling Convention of e6
 
 When making a call
-1.	First number goes into RAX, second number goes into RCX
-2.	First string goes into RSI, second string goes into RDI
-3.	First buffer goes into RBX, second buffer goes into RBP
+1.	First number goes into RAX, second number goes into RCX.
+2.	First string goes into RSI, second string goes into RDI.
+3.	First buffer goes into RBX, second buffer goes into RBP.
 4.	RDX is used when there is a third parameter of a given type. For example, use RDX as spare to pass in a third number, string, or buffer.
-5.	If there are too many of a given parameter type, then pass all parameters in a buffer pointed to in RBX
+5.	If there are too many of a given parameter type, then pass all parameters in a buffer pointed to in RBX.
 6.	When there is an error, the carry flag is set, RAX contains the error code and RSI points to the error string
-7.	Clear the carry flag on success.
-8.	Strings are prefixed by their lengths.
+7.	The carry flag is cleared on success.
+8.	Strings are prefixed by their 4-byte lengths and also null-terminated. The length of the string does not include the null character.
 9.	RAX, RBX, RCX, RDX, RSI, RDI, and RBP are volatile.
-10.	R8 - R15 are preserved across calls
-11.	The stack is used for making calls and as temporary working space
+10.	R8 - R15 are preserved across calls.
+11.	The stack is used for making calls and as temporary working space.
+12. Arrays and Strucs are treated as buffers so they are passed in RBX/RBP.
+
+When returning from a call
+1.	Returning from a call works the same way as making a call. Return the first number in RAX, the second number in RCX.
+2.	Return first string in RSI and second string in RDI.
+3.	Return the first buffer in RBX and the second in RBP.
+4.	Use RDX as spare to return a third parameter of a given type. E.g. to return 3 strings, return them in RSI, RDI and RDX respectively.
+5.	If there are too many return values of a given type, return them in a buffer pointed to by RBX.
+6.	On error, set the carry flag, put the error code in RAX and the error string in RSI.
+7.	Clear the carry flag on success
+8.	RAX, RBX, RCX, RDX, RSI, RDI, and RBP are volatile. These registers may be used as the programmer sees fit.
+9.	R8-R15 must be preserved.
+10.	The stack is used as local working space and for making calls.
