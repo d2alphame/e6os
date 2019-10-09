@@ -12,7 +12,7 @@ When making a call
 9.	RAX, RBX, RCX, RDX, RSI, RDI, and RBP are volatile.
 10.	R8 - R15 are preserved across calls.
 11.	The stack is used for making calls and as temporary working space.
-12. Arrays and Strucs are treated as buffers so they are passed in RBX/RBP.
+12.	Arrays and Strucs are treated as buffers so they are passed in RBX/RBP.
 
 When returning from a call
 1.	Returning from a call works the same way as making a call. Return the first number in RAX, the second number in RCX.
