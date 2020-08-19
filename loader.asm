@@ -10,8 +10,8 @@
 ; EntryPoint	8		Entry Point		Offset into the image to start executing code from
 ; Reserved		16		Reserved		Must be zeros. Reserved for future use
 
-Org 0x200000
-Bits 64
+BITS 64
+org 0x200000
 
 mov rax, 'FOR E6OS'							; The signature value to find
 mov rdi, 0x200000							; Start address to begin search from
