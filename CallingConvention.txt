@@ -11,8 +11,9 @@ When making a call
 8.	Strings are prefixed by their 4-byte lengths.
 9.	RAX, RBX, RCX, RDX, RSI, RDI, and RBP are volatile.
 10.	R8 - R15 are preserved across calls.
-11.	The stack is used for making calls and as temporary working space.
-12.	Arrays and structs/records are treated as buffers so they are passed in RBX/RBP.
+11.	RSP must be preserved.
+12.	The stack is used for making calls and as temporary working space.
+13.	Arrays and structs/records are treated as buffers so they are passed in RBX/RBP.
 
 When returning from a call
 1.	Returning from a call works the same way as making a call. Return the first number in RAX, the second number in RCX.
@@ -24,4 +25,5 @@ When returning from a call
 7.	Clear the carry flag on success
 8.	RAX, RBX, RCX, RDX, RSI, RDI, and RBP are volatile. These registers may be used as the programmer sees fit.
 9.	R8-R15 must be preserved.
-10.	The stack is used as local working space and for making calls.
+10.	RSP must be preserved.
+11.	The stack is used as local working space and for making calls.
