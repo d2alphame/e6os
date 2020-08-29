@@ -10,3 +10,4 @@ On e6 all memory is identity mapped. That is:
 	virtual_memory = physical_memory
 
 Paging is setup to 2MB per page and memory is allocated on a page-by-page basis.
+This means calling 'malloc' gives a 2MB memory page. 
