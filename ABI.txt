@@ -8,4 +8,3 @@ Org 0x200000
 
 This address (0x200000) is also passed to the program in rbx.
 rsi points to the literal string with which the program was called.
-The program is also 

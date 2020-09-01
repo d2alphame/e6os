@@ -12,4 +12,4 @@ On e6 all memory is identity mapped. That is:
 Paging is setup to 2MB per page and memory is allocated on a page-by-page basis.
 This means calling 'malloc' gives a 2MB memory page.
 
-The OS itself lives in the upper 4MB of memory space. That represents the last 2 pages of memory.
+The OS itself lives in the last 4MB of memory space. That represents the last 2 pages of memory.

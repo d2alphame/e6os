@@ -18,8 +18,9 @@ mov rdi, 0x200000							; Start address to begin search from
 mov rcx, 0x2000								; This is the number of string quads to search
 
 begin:
+sub rcx, 4									; The e6 tag should be completely contained within the first 64KB
 repnz scasq									; Search for the e6 signature
-jnz .not_found								; If zero flag is set here then the signature was not found
+jnz .not_found								; If zero flag is not set here then the signature was not found
 
 ; Prepare to get the entry point
 mov rsi, rdi
