@@ -3,3 +3,5 @@ Use rEFInd as the boot manager.
 	2.	When the e6 system grows mature enough, the boot manager can be re-written in it
 	3.	It is expected that rEFInd is really just a efi application
 	4.	rEFInd searches for NVRAM Boot variables and presents them to the user for selection
+
+Implement a filesystem and memory allocation unit for e6

@@ -11,11 +11,10 @@
 ; Reserved		16		Reserved		Must be zeros. Reserved for future use
 
 BITS 64
-org 0x200000
 
 mov rax, 'FOR E6OS'							; The signature value to find
 mov rdi, 0x200000							; Start address to begin search from
-mov rcx, 0x2000								; This is the number of string quads to search
+mov rcx, 0x2000
 
 begin:
 sub rcx, 4									; The e6 tag should be completely contained within the first 64KB
