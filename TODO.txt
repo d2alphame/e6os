@@ -1,5 +1,5 @@
-Use rEFInd or rEFIt as the boot manager.
+Use rEFInd as the boot manager.
 	1.	This enables e6os to be able to live in harmony with other operating systems
 	2.	When the e6 system grows mature enough, the boot manager can be re-written in it
-	3.	It is expected that rEFInd/rEFIt is really just a efi application
-	4.	rEFInd/rEFIt searches for NVRAM Boot variables and presents them to the user for selection
+	3.	It is expected that rEFInd is really just a efi application
+	4.	rEFInd searches for NVRAM Boot variables and presents them to the user for selection
