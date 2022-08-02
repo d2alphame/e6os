@@ -14,7 +14,7 @@ SECTOR_0:
     .FAT_count                  db 1                ; Number of FATs. 2 is recommended but I'm choosing 1 here
     .root_entries_count         dw 64               ; Number of entries the root entry can take
     .total_sectors_count        dw 65524            ; Total number of sectors. 65524 is max for FAT16
-    .boot_media                 db 0xF8             ; F8 for fixed disk, F0 for removable media such as floppy disks
+    .boot_media                 db 0xF0             ; F8 for fixed disk, F0 for removable media such as floppy disks
     .FAT_sector_count           dw 64               ; Number of sectors occupied by 1 FAT
     .sectors_per_track          dw 0                ; Number of sectors per track. Not relevant to us
     .heads_count                dw 0                ; Number of heads on the medium. Not relevant
@@ -41,8 +41,8 @@ times 2048-($-$$) db 0                              ; Pad up to a 2KB sector
 
 ; Sectors 1 to 64 are reserved for the File Allocation Tables
 SECTOR_1:
-    dw 0xFFF8                                       ; First entry in the FAT. Media type in low byte 
-    dw 0xFFFF                                       ; Second. Set bit 15 on clean unmount, set bit 14 on no read/write errors. Set all other bits
+    dw 0xFFF0                                       ; First entry in the FAT. Media type in low byte 
+    dw 0xFFFF                                       ; Second entry. Set bit 15 on clean unmount, set bit 14 on no read/write errors. Set all other bits
     dw 0xFFFF
     dw 0xFFFF
 
