@@ -1,10 +1,7 @@
 This file describes the ABI of e6os.
 
-All e6 programs are 64 bits and are loaded at address 0x200000 (that's the 2MB mark)
+All e6 programs are 64 bits and are loaded at address 0x400000 (that's the 4MB mark)
 So programs begin with the following 2 lines (in nasm)
 
 BITS 64
-Org 0x200000
-
-This address (0x200000) is also passed to the program in rbx.
-rsi points to the literal string with which the program was called.
+Org 0x400000
