@@ -68,10 +68,6 @@ OPTIONAL_HEADER_START:
                 ; First order of business is to store the values that were passed to us by EFI
                 mov [EFI_IMAGE_HANDLE], rcx
                 mov [EFI_SYSTEM_TABLE], rdx
-                
-				; Even though they've been saved to memory, also save rcx and rdx on the stack
-				push rcx
-				push rdx
 
 				; Clear the screen
                 add rdx, EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL                        ; Locate SIMPLE_TEXT_OUTPUT_PROTOCOL
@@ -88,6 +84,7 @@ OPTIONAL_HEADER_START:
             ; entries, their space here will be used for something a little more useful.
             ContinueEntryPoint:
                 mov rcx, [rdx]                                                  ; The only parameter ClearScreen() needs
+                mov r15, [rdx]                                                  ; Save pointer to EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL in a non-volatile register
                 mov rdx, [rdx]
                 add rdx, EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_ClearScreen            ; Point rdx to the pointer to the ClearScreen function
                 mov rbx, [rdx]                                                  ; Load the pointer to the function in preparation for the call
@@ -95,7 +92,13 @@ OPTIONAL_HEADER_START:
                 call rbx
 
 				; Print e6 installer's message above.
-				
+                mov rbx, r15
+                mov rcx, r15
+                add rbx, EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_OutputString
+                mov rbx, [rbx]
+                lea rdx, [STANDARD_HEADER.E6_STARTUP_MESSAGE]
+                call rbx
+
                 add rsp, 32
                 mov rax, EFI_SUCCESS
 
