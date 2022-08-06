@@ -1,0 +1,2 @@
+; This is the installer of e6 os. This program is expected to be loaded and executed directly by efi.
+; The resulting efi application is copied unto a FAT16 esp filesystem on an El-torito compliant image or cd
