@@ -90,12 +90,12 @@ OPTIONAL_HEADER_START:
                 mov rcx, [rdx]                                                  ; The only parameter ClearScreen() needs
                 mov rdx, [rdx]
                 add rdx, EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_ClearScreen            ; Point rdx to the pointer to the ClearScreen function
-                mov rax, [rdx]                                                  ; Load the pointer to the function in preparation for the call
+                mov rbx, [rdx]                                                  ; Load the pointer to the function in preparation for the call
                 sub rsp, 32                                                     ; Shadow space on the stack
-                call rax
+                call rbx
 
 				; Print e6 installer's message above.
-
+				
                 add rsp, 32
                 mov rax, EFI_SUCCESS
 
@@ -153,7 +153,7 @@ CODE:
 
 CODE_END:
 
-; times 4096-($-PE)   db 0
+times 4096-($-PE)   db 0
 HEADER_END:
 
 END:
