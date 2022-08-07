@@ -12,7 +12,7 @@ STANDARD_HEADER:
     
     ; 58 more bytes of DOS Headers should normally follow which are useless for this program. So rather than
     ; fill these with zeros, we'll fill it in with something that might be more useful.
-        .E6_STARTUP_MESSAGE     db __utf16__ `E6 Installer\r\n\0`
+        .E6_STARTUP_MESSAGE     db __utf16__ `E6 Installer CD\r\n\0`
                                 times 60-($-STANDARD_HEADER) db 0                                   ; Should be DOS Headers.
 
     .SIGNATURE_POINTER          dd .PE_SIGNATURE - START                                            ; Pointer to the PE Signature
@@ -99,6 +99,8 @@ OPTIONAL_HEADER_START:
                 lea rdx, [STANDARD_HEADER.E6_STARTUP_MESSAGE]
                 call rbx
 
+                ; Detect storage devices/partitions/volumes on the system
+
                 add rsp, 32
                 mov rax, EFI_SUCCESS
 
@@ -134,29 +136,19 @@ SECTION_HEADERS:
         .characteristics            dd 0xC2000040
 
 CODE:
-    ; The code begins here with the entry point
-    SubEntryPoint:
 
-        ; Locate OutputString of the TEXT_OUTPUT_PROTOCOL
-        add rdx, EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL
-        mov rcx, [rdx]                                                  ; This is the first parameter to the call
-        mov rdx, [rdx]                                                  ; Now rdx points to simple text output protocol
-
-        add rdx, EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_OutputString           ; Now rdx points to output string
-        mov rax, [rdx]                                                  ; We'll later do `call rax`
-
-        lea rdx, [STANDARD_HEADER.E6_STARTUP_MESSAGE]                   ; The string to be printed
-        sub rsp, 32                                                     ; Shadow space on the stack before the call
-        call rax
-
-        add rsp, 32
-        mov rax, EFI_SUCCESS
-
+    ; Prints out the value of rax in hexadecimal
+    ; In RAX the hex number to print
+    PrintRaxHex:
+        
         ret
 
+    ; Prints out the value at memory location in hexadecimal
+    PrintMemHex:
+    
 CODE_END:
 
-times 4096-($-PE)   db 0
+; times 4096-($-PE)   db 0
 HEADER_END:
 
 END:
