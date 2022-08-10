@@ -14,7 +14,6 @@ STANDARD_HEADER:
     ; fill these with zeros, we'll fill it in with something that might be more useful.
         .E6_STARTUP_MESSAGE     db __utf16__ `E6 Installer CD\r\n\0`
                                 times 60-($-STANDARD_HEADER) db 0                                   ; Should be DOS Headers.
-
     .SIGNATURE_POINTER          dd .PE_SIGNATURE - START                                            ; Pointer to the PE Signature
     .PE_SIGNATURE               db 'PE', 0x00, 0x00                                                 ; This is the pe signature. The characters 'PE' followed by 2 null bytes
     .MACHINE_TYPE               dw 0x8664                                                           ; Targetting the x64 machine
@@ -140,7 +139,9 @@ CODE:
     ; Prints out the value of rax in hexadecimal
     ; In RAX the hex number to print
     PrintRaxHex:
-        
+        mov rcx, rax
+        and rax, 0x0F
+
         ret
 
     ; Prints out the value at memory location in hexadecimal
