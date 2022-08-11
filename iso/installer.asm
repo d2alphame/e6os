@@ -11,8 +11,9 @@ STANDARD_HEADER:
     .DOS_SIGNATURE              db 'MZ'                                                             ; The DOS signature. This is apparently compulsory
     
     ; 58 more bytes of DOS Headers should normally follow which are useless for this program. So rather than
-    ; fill these with zeros, we'll fill it in with something that might be more useful.
+    ; fill these with zeros, we'll fill it in with somethings that might be more useful.
         .E6_STARTUP_MESSAGE     db __utf16__ `E6 Installer CD\r\n\0`
+        .E6_HEX_DIGITS          db '0123456789ABCDEF'
                                 times 60-($-STANDARD_HEADER) db 0                                   ; Should be DOS Headers.
     .SIGNATURE_POINTER          dd .PE_SIGNATURE - START                                            ; Pointer to the PE Signature
     .PE_SIGNATURE               db 'PE', 0x00, 0x00                                                 ; This is the pe signature. The characters 'PE' followed by 2 null bytes
@@ -35,7 +36,7 @@ OPTIONAL_HEADER_START:
     .BASE_OF_CODE_ADDRESS       dd START                        ; Relative address of base of code
     .IMAGE_BASE                 dq 0x400000                     ; Where in memory we would prefer the image to be loaded at
     .SECTION_ALIGNMENT          dd 0x1000                       ; Alignment in bytes of sections when they are loaded in memory. Align to page boundry (4kb)
-    .FILE_ALIGNMENT             dd 0x1000                       ; Alignment of sections in the file. Also align to 4kb
+    .FILE_ALIGNMENT             dd 0x1000                       ; Alignment of sections in the file. Also align to 4kb 
     .MAJOR_OS_VERSION           dw 0x00                         ; I'm not sure UEFI requires these and the following 'version woo'
     .MINOR_OS_VERSION           dw 0x00                         ; More of these version thingies are to follow. Again, not sure UEFI needs them
     .MAJOR_IMAGE_VERSION        dw 0x00                         ; Major version of the image
@@ -98,6 +99,9 @@ OPTIONAL_HEADER_START:
                 lea rdx, [STANDARD_HEADER.E6_STARTUP_MESSAGE]
                 call rbx
 
+                mov rax, 'PRINT ME'
+                call PrintRaxHex
+
                 ; Detect storage devices/partitions/volumes on the system
 
                 add rsp, 32
@@ -139,17 +143,59 @@ CODE:
     ; Prints out the value of rax in hexadecimal
     ; In RAX the hex number to print
     PrintRaxHex:
-        mov rcx, rax
-        and rax, 0x0F
 
-        ret
+        ; Before anything, preserve the following registers on the stack
+        push rax
+        push rbx
+        push rcx
+        push rdi
+
+        mov rcx, 16
+        mov rdx, rax
+        lea rdi, [DATA.rax_print_buffer]
+        lea rbx, [STANDARD_HEADER.E6_HEX_DIGITS] 
+        .loop:
+            and rax, 0x0F
+            xlatb
+            stosw
+            cmp rcx, 0
+            je .done
+            dec rcx
+            xor rax, rax
+            shr rdx, 4
+            mov rax, rdx
+            jmp .loop
+        .done:
+            ; Print the buffer we just set up
+            mov rbx, r15
+            mov rcx, r15
+            add rbx, EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_OutputString
+            mov rbx, [rbx]
+            lea rdx, [DATA.rax_print_hex_prefix]
+            call rbx
+
+            ; Restore registers that were preserved
+            pop rdi
+            pop rcx
+            pop rbx
+            pop rax
+
+            ret
 
     ; Prints out the value at memory location in hexadecimal
     PrintMemHex:
-    
+
 CODE_END:
 
-; times 4096-($-PE)   db 0
+DATA:
+    ; These define a buffer for when we want to print the value in rax in hexadecimal
+    .rax_print_hex_prefix: db __utf16__ '0x' 
+    .rax_print_buffer: times 16 dw 0                ; Enough to hold 8 bytes at 2 characters per byte
+    .rax_print_newline: db __utf16__ `\r\n`         ; The newline character
+    .rax_print_buffer_null_terminator: dw 0         ; EFI requires this to print a string
+DATA_END:
+
+times 4096-($-PE)   db 0
 HEADER_END:
 
 END:
