@@ -99,7 +99,7 @@ OPTIONAL_HEADER_START:
                 lea rdx, [STANDARD_HEADER.E6_STARTUP_MESSAGE]
                 call rbx
 
-                mov rax, 'PRINT ME'
+                mov rax, 0xABCDEF0123456789
                 call PrintRaxHex
 
                 ; Detect storage devices/partitions/volumes on the system
@@ -150,20 +150,21 @@ CODE:
         push rcx
         push rdi
 
-        mov rcx, 16
         mov rdx, rax
         lea rdi, [DATA.rax_print_buffer]
-        lea rbx, [STANDARD_HEADER.E6_HEX_DIGITS] 
+        lea rbx, [STANDARD_HEADER.E6_HEX_DIGITS]        ; So we can do xlatb
+        
+        mov rcx, 16
+        
         .loop:
+            rol rdx, 4
+            mov rax, rdx
             and rax, 0x0F
             xlatb
             stosw
+            dec rcx
             cmp rcx, 0
             je .done
-            dec rcx
-            xor rax, rax
-            shr rdx, 4
-            mov rax, rdx
             jmp .loop
         .done:
             ; Print the buffer we just set up
