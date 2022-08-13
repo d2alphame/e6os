@@ -99,11 +99,9 @@ OPTIONAL_HEADER_START:
                 lea rdx, [STANDARD_HEADER.E6_STARTUP_MESSAGE]
                 call rbx
 
-                mov rax, 0xABCDEF0123456789
-                call PrintRaxHex
-
                 ; Detect storage devices/partitions/volumes on the system
 
+                ; Return to EFI
                 add rsp, 32
                 mov rax, EFI_SUCCESS
 
@@ -140,8 +138,8 @@ SECTION_HEADERS:
 
 CODE:
 
-    ; Prints out the value of rax in hexadecimal
-    ; In RAX the hex number to print
+    ; Prints out the value of RAX in hexadecimal
+    ; In RAX the number to print
     PrintRaxHex:
 
         ; Before anything, preserve the following registers on the stack
@@ -184,19 +182,23 @@ CODE:
             ret
 
     ; Prints out the value at memory location in hexadecimal
+    ; In RSI, Pointer to the byte string to print
+    ; In RCX, number of bytes to print
     PrintMemHex:
 
+
+    ; Prints 
+    PrintMemASCII:
 CODE_END:
 
 DATA:
     ; These define a buffer for when we want to print the value in rax in hexadecimal
     .rax_print_hex_prefix: db __utf16__ '0x' 
     .rax_print_buffer: times 16 dw 0                ; Enough to hold 8 bytes at 2 characters per byte
-    .rax_print_newline: db __utf16__ `\r\n`         ; The newline character
     .rax_print_buffer_null_terminator: dw 0         ; EFI requires this to print a string
 DATA_END:
 
-times 4096-($-PE)   db 0
+; times 4096-($-PE)   db 0
 HEADER_END:
 
 END:

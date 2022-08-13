@@ -5,4 +5,7 @@ This folder contains everything that is needed to create a bootable ISO 9660 ima
 By Default e6 uses FAT16 for its ESP.
 The ESP that goes into the ISO image uses 2048 bytes per sector.
 
+E6 does not play well with BIOS/MBR Operating Systems. That's because it overwrites the bootsector (the first sector
+on the disk) with its own code and data. _*Do not install E6 on an MBR formatted disk or BIOS systems*_
+
 BOOTCODE is inserted into the BPB area of the boot sector of e6's iso
