@@ -100,6 +100,12 @@ OPTIONAL_HEADER_START:
                 call rbx
 
                 ; Detect storage devices/partitions/volumes on the system
+                ; 1. Allocate memory that locatehandle will use
+
+
+
+
+
 
                 ; Return to EFI
                 add rsp, 32
@@ -195,8 +201,7 @@ DATA:
     .rax_print_buffer: times 16 dw 0                ; Enough to hold 8 bytes at 2 characters per byte
     .rax_print_buffer_null_terminator: dw 0         ; EFI requires this to print a string
 
-    ; 
-
+    .mem_print_buffer: times 98 db 0                ; Buffer for printing memory bytes
 DATA_END:
 
 ; times 4096-($-PE)   db 0
