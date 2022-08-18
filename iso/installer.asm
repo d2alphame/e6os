@@ -12,7 +12,7 @@ STANDARD_HEADER:
     
     ; 58 more bytes of DOS Headers should normally follow which are useless for this program. So rather than
     ; fill these with zeros, we'll fill it in with somethings that might be more useful.
-        .E6_STARTUP_MESSAGE     db __utf16__ `E6 Installer CD\r\n\0`
+        .E6_STARTUP_MESSAGE     db __utf16__ `E6 Installer CD\r\n\r\n\0`
         .E6_HEX_DIGITS          db '0123456789ABCDEF'
                                 times 60-($-STANDARD_HEADER) db 0                                   ; Should be DOS Headers.
     .SIGNATURE_POINTER          dd .PE_SIGNATURE - START                                            ; Pointer to the PE Signature
@@ -181,11 +181,9 @@ CODE:
 
             ret
 
-    ; Prints out the value at memory location in hexadecimal
+    ; Prints out the value at memory location in hexadecimal (prints 16 bytes)
     ; In RSI, Pointer to the byte string to print
-    ; In RCX, number of bytes to print
     PrintMemHex:
-
 
     ; Prints 
     PrintMemASCII:
@@ -196,6 +194,9 @@ DATA:
     .rax_print_hex_prefix: db __utf16__ '0x' 
     .rax_print_buffer: times 16 dw 0                ; Enough to hold 8 bytes at 2 characters per byte
     .rax_print_buffer_null_terminator: dw 0         ; EFI requires this to print a string
+
+    ; 
+
 DATA_END:
 
 ; times 4096-($-PE)   db 0
@@ -205,7 +206,14 @@ END:
 
 ; Define the needed EFI constants and offsets here.
 EFI_SUCCESS                                         equ 0
+
 EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL                     equ 64                    
 EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_Reset               equ 0
 EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_OutputString        equ 8
 EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_ClearScreen         equ 48
+
+EFI_BOOTSERVICES                                    equ 96
+
+EFI_LOCATE_SEARCH_TYPE_AllHandles                   equ 0
+EFI_LOCATE_SEARCH_TYPE_ByRegisterNotify             equ 1
+EFI_LOCATE_SEARCH_TYPE_ByProtocol                   equ 2
