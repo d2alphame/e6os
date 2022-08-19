@@ -61,16 +61,26 @@ OPTIONAL_HEADER_START:
     ; The next 40 bytes represent the first 5 entries of the data directory which are of no use to us. Again,
     ; rather than have 40 bytes worth of nothing but zeros, we'll like to put something useful in here.
 
-            EFI_IMAGE_HANDLE    dq 0x00                                         ; EFI will give use this in rcx
-            EFI_SYSTEM_TABLE    dq 0x00                                         ; And this in rdx
-
             EntryPoint:
                 ; First order of business is to store the values that were passed to us by EFI
-                mov [EFI_IMAGE_HANDLE], rcx
-                mov [EFI_SYSTEM_TABLE], rdx
+                ; Here I've decided to put them in non volatile registers
+                mov r13, rcx
+                mov r14, rdx
 
 				; Clear the screen
                 add rdx, EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL                        ; Locate SIMPLE_TEXT_OUTPUT_PROTOCOL
+                mov rcx, [rdx]                                                  ; The only parameter ClearScreen() needs
+                mov r15, [rdx]                                                  ; Save pointer to EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL in a non-volatile register
+                mov rdx, [rdx]
+                add rdx, EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_ClearScreen            ; Point rdx to the pointer to the ClearScreen function
+                mov rbx, [rdx]                                                  ; Load the pointer to the function in preparation for the call
+                sub rsp, 32                                                     ; Shadow space on the stack
+                call rbx
+
+				; Print e6 installer's message above.
+                mov rbx, r15
+                mov rcx, r15
+
                 jmp ContinueEntryPoint                                          ; Jump over the RELOC data directory entry below and continue. Still trying to clear the screen
                     times 40 - ($ - DATA_DIRECTORIES) db 0                      ; This is here so nasm would squeal in case we go past 40 bytes
         
@@ -83,27 +93,14 @@ OPTIONAL_HEADER_START:
             ; 10 more data directory entries are supposed to follow. However, because we don't need those data directory
             ; entries, their space here will be used for something a little more useful.
             ContinueEntryPoint:
-                mov rcx, [rdx]                                                  ; The only parameter ClearScreen() needs
-                mov r15, [rdx]                                                  ; Save pointer to EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL in a non-volatile register
-                mov rdx, [rdx]
-                add rdx, EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_ClearScreen            ; Point rdx to the pointer to the ClearScreen function
-                mov rbx, [rdx]                                                  ; Load the pointer to the function in preparation for the call
-                sub rsp, 32                                                     ; Shadow space on the stack
-                call rbx
 
-				; Print e6 installer's message above.
-                mov rbx, r15
-                mov rcx, r15
                 add rbx, EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_OutputString
                 mov rbx, [rbx]
                 lea rdx, [STANDARD_HEADER.E6_STARTUP_MESSAGE]
                 call rbx
 
-                lea rsi, [STANDARD_HEADER.SIGNATURE_POINTER]
-                call PrintMemHex
                 ; Detect storage devices/partitions/volumes on the system
-                ; 1. Allocate memory that locatehandle will use
-
+                ; 
 
 
 
