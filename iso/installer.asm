@@ -100,17 +100,26 @@ OPTIONAL_HEADER_START:
                 call rbx
 
                 ; Detect storage devices/partitions/volumes on the system
-                ; 
+                ; To do that we need to first allocate pages
+                mov rbx, r14
+                add rbx, EFI_BOOTSERVICES
+                mov rbx, [rbx]
+                add rbx, EFI_BOOTSERVICES_AllocatePages
+                mov rbx, [rbx]
+                mov rcx, EFI_ALLOCATE_TYPE_AllocateAnyPages
+                mov rdx, EFI_MEMORY_TYPE_LoaderData
+                mov r8, 4                                       ; Number of contiguous pages to allocate. This should give 16kb
+                mov r9, 0x1000                                      ; Memory address we would prefer to be allocated
 
+                call rbx
 
-
-
+                call PrintRaxHex
 
                 ; Return to EFI
                 add rsp, 32
                 mov rax, EFI_SUCCESS
 
-                ret
+                ;ret
 
             times 80 - ($ - ContinueEntryPoint) db 0
 
@@ -262,6 +271,19 @@ EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_ClearScreen         equ 48
 
 EFI_BOOTSERVICES                                    equ 96
 
+EFI_BOOTSERVICES_AllocatePages                      equ 40
+
 EFI_LOCATE_SEARCH_TYPE_AllHandles                   equ 0
-EFI_LOCATE_SEARCH_TYPE_ByRegisterNotify             equ 1
-EFI_LOCATE_SEARCH_TYPE_ByProtocol                   equ 2
+; EFI_LOCATE_SEARCH_TYPE_ByRegisterNotify             equ 1
+; EFI_LOCATE_SEARCH_TYPE_ByProtocol                   equ 2
+
+EFI_ALLOCATE_TYPE_AllocateAnyPages                  equ 0
+; EFI_ALLOCATE_TYPE_AllocateMaxAddress                equ 1
+; EFI_ALLOCATE_TYPE_AllocateAddress                   equ 2
+; EFI_ALLOCATE_TYPE_MaxAllocateType                   equ 3
+
+; EFI_MEMORY_TYPE_ReservedMemory                      equ 0
+; EFI_MEMORY_TYPE_LoaderCode                          equ 1
+EFI_MEMORY_TYPE_LoaderData                          equ 2
+; EFI_MEMORY_TYPE_BootServicesCode                    equ 3
+; EFI_MEMORY_TYPE_BootServicesData                    equ 4
