@@ -99,6 +99,8 @@ OPTIONAL_HEADER_START:
                 lea rdx, [STANDARD_HEADER.E6_STARTUP_MESSAGE]
                 call rbx
 
+                lea rsi, [STANDARD_HEADER.SIGNATURE_POINTER]
+                call PrintMemHex
                 ; Detect storage devices/partitions/volumes on the system
                 ; 1. Allocate memory that locatehandle will use
 
@@ -191,6 +193,50 @@ CODE:
     ; In RSI, Pointer to the byte string to print
     PrintMemHex:
 
+        push rax
+        push rbx
+        push rcx
+        push rdx
+        push rsi
+        push rdi
+
+        lea rbx, [STANDARD_HEADER.E6_HEX_DIGITS]
+        lea rdi, [DATA.mem_print_buffer]
+        mov rcx, 16
+        .loop:
+            lodsb
+            mov rdx, rax
+            and rax, 0xF0
+            ror rax, 4
+            xlatb
+            stosw
+            mov rax, rdx
+            and rax, 0x0F
+            xlatb
+            stosw
+            mov al, ' '         ; don't forget to print the space after each byte
+            stosw
+            dec rcx
+            cmp rcx, 0
+            je .done
+            jmp .loop
+        .done:
+            mov rbx, r15
+            mov rcx, r15
+            add rbx, EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_OutputString
+            mov rbx, [rbx]
+            lea rdx, [DATA.mem_print_buffer]
+            call rbx
+
+            pop rdi
+            pop rsi
+            pop rdx
+            pop rcx
+            pop rbx
+            pop rax
+
+            ret
+
     ; Prints 
     PrintMemASCII:
 CODE_END:
@@ -204,7 +250,7 @@ DATA:
     .mem_print_buffer: times 98 db 0                ; Buffer for printing memory bytes
 DATA_END:
 
-; times 4096-($-PE)   db 0
+times 4096-($-PE)   db 0
 HEADER_END:
 
 END:
