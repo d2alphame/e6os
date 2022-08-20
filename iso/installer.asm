@@ -113,9 +113,11 @@ OPTIONAL_HEADER_START:
                 call rbx
 
                 cmp rax, EFI_SUCCESS                                    ; Check if the allocation was successful
-                jne .error                                              ; If there's error, exit with the error message
+                jne ContinueEntryPoint2.error                           ; If there's error, exit with the error message
                 mov rbx, [abs 0x1000]                                   ; EFI says Memory which we passed as 0x1000 will contain the base of the allocated pages
 
+                mov rcx, EFI_LOCATE_SEARCH_TYPE_ByProtocol              ; We want to Locate By protocol, specifically block io
+                ; mov rdx, 
 
                 ; Call EFI LocateDevice Handle by protocol. Now we have 12kb at a given base
                 ; address pointed to in [rbx]
@@ -123,10 +125,6 @@ OPTIONAL_HEADER_START:
 
                 jmp ContinueEntryPoint2
 
-                ; If there's an error, just exit
-                .error:
-                    add rsp, 32
-                    ret
 
             times 80 - ($ - ContinueEntryPoint) db 0
 
@@ -158,7 +156,6 @@ SECTION_HEADERS:
         .characteristics            dd 0xC2000040
 
 CODE:
-
     ; The entry point continues from here
     ContinueEntryPoint2:
 
@@ -166,6 +163,9 @@ CODE:
         add rsp, 32
         ret
 
+        .error:
+            add rsp, 32
+            ret
 
     ; Prints out the value of RAX in hexadecimal
     ; In RAX the number to print
@@ -289,11 +289,11 @@ EFI_BOOTSERVICES_AllocatePages                      equ 40
 EFI_BOOTSERVICES_LocateHandle                       equ 176
 
 EFI_LOCATE_SEARCH_TYPE_AllHandles                   equ 0
-; EFI_LOCATE_SEARCH_TYPE_ByRegisterNotify             equ 1
-; EFI_LOCATE_SEARCH_TYPE_ByProtocol                   equ 2
+EFI_LOCATE_SEARCH_TYPE_ByRegisterNotify             equ 1
+EFI_LOCATE_SEARCH_TYPE_ByProtocol                   equ 2
 
-; EFI_ALLOCATE_TYPE_AllocateAnyPages                  equ 0
-; EFI_ALLOCATE_TYPE_AllocateMaxAddress                equ 1
+EFI_ALLOCATE_TYPE_AllocateAnyPages                  equ 0
+EFI_ALLOCATE_TYPE_AllocateMaxAddress                equ 1
 EFI_ALLOCATE_TYPE_AllocateAddress                   equ 2
 ; EFI_ALLOCATE_TYPE_MaxAllocateType                   equ 3
 
