@@ -112,11 +112,21 @@ OPTIONAL_HEADER_START:
                 mov r9, 0x1000                                          ; Memory address we would prefer to be allocated. Cannot be null
                 call rbx
 
-                
-                ; Return to EFI
-                add rsp, 32
-                mov rax, EFI_SUCCESS
-                ret
+                cmp rax, EFI_SUCCESS                                    ; Check if the allocation was successful
+                jne .error                                              ; If there's error, exit with the error message
+                mov rbx, [abs 0x1000]                                   ; EFI says Memory which we passed as 0x1000 will contain the base of the allocated pages
+
+
+                ; Call EFI LocateDevice Handle by protocol. Now we have 12kb at a given base
+                ; address pointed to in [rbx]
+
+
+                jmp ContinueEntryPoint2
+
+                ; If there's an error, just exit
+                .error:
+                    add rsp, 32
+                    ret
 
             times 80 - ($ - ContinueEntryPoint) db 0
 
@@ -148,6 +158,14 @@ SECTION_HEADERS:
         .characteristics            dd 0xC2000040
 
 CODE:
+
+    ; The entry point continues from here
+    ContinueEntryPoint2:
+
+        xor rax, rax
+        add rsp, 32
+        ret
+
 
     ; Prints out the value of RAX in hexadecimal
     ; In RAX the number to print
@@ -253,7 +271,7 @@ DATA:
     .mem_print_buffer: times 98 db 0                ; Buffer for printing memory bytes
 DATA_END:
 
-; times 4096-($-PE)   db 0
+times 4096-($-PE)   db 0
 HEADER_END:
 
 END:
@@ -267,8 +285,8 @@ EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_OutputString        equ 8
 EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_ClearScreen         equ 48
 
 EFI_BOOTSERVICES                                    equ 96
-
 EFI_BOOTSERVICES_AllocatePages                      equ 40
+EFI_BOOTSERVICES_LocateHandle                       equ 176
 
 EFI_LOCATE_SEARCH_TYPE_AllHandles                   equ 0
 ; EFI_LOCATE_SEARCH_TYPE_ByRegisterNotify             equ 1
