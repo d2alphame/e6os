@@ -63,7 +63,7 @@ OPTIONAL_HEADER_START:
 
             EntryPoint:
                 ; First order of business is to store the values that were passed to us by EFI
-                ; Here I've decided to put them in non volatile registers
+                ; Here I've decided to put them in efi non-volatile registers
                 mov r13, rcx
                 mov r14, rdx
 
@@ -100,26 +100,23 @@ OPTIONAL_HEADER_START:
                 call rbx
 
                 ; Detect storage devices/partitions/volumes on the system
-                ; To do that we need to first allocate pages
+                ; To do that we need to first allocate memory pages
                 mov rbx, r14
                 add rbx, EFI_BOOTSERVICES
                 mov rbx, [rbx]
                 add rbx, EFI_BOOTSERVICES_AllocatePages
                 mov rbx, [rbx]
-                mov rcx, EFI_ALLOCATE_TYPE_AllocateAnyPages
+                mov rcx, EFI_ALLOCATE_TYPE_AllocateAddress
                 mov rdx, EFI_MEMORY_TYPE_LoaderData
-                mov r8, 4                                       ; Number of contiguous pages to allocate. This should give 16kb
-                mov r9, 0x1000                                      ; Memory address we would prefer to be allocated
-
+                mov r8, 3                                               ; Number of contiguous pages to allocate. This should give 12kb
+                mov r9, 0x1000                                          ; Memory address we would prefer to be allocated. Cannot be null
                 call rbx
 
-                call PrintRaxHex
-
+                
                 ; Return to EFI
                 add rsp, 32
                 mov rax, EFI_SUCCESS
-
-                ;ret
+                ret
 
             times 80 - ($ - ContinueEntryPoint) db 0
 
@@ -256,7 +253,7 @@ DATA:
     .mem_print_buffer: times 98 db 0                ; Buffer for printing memory bytes
 DATA_END:
 
-times 4096-($-PE)   db 0
+; times 4096-($-PE)   db 0
 HEADER_END:
 
 END:
@@ -277,9 +274,9 @@ EFI_LOCATE_SEARCH_TYPE_AllHandles                   equ 0
 ; EFI_LOCATE_SEARCH_TYPE_ByRegisterNotify             equ 1
 ; EFI_LOCATE_SEARCH_TYPE_ByProtocol                   equ 2
 
-EFI_ALLOCATE_TYPE_AllocateAnyPages                  equ 0
+; EFI_ALLOCATE_TYPE_AllocateAnyPages                  equ 0
 ; EFI_ALLOCATE_TYPE_AllocateMaxAddress                equ 1
-; EFI_ALLOCATE_TYPE_AllocateAddress                   equ 2
+EFI_ALLOCATE_TYPE_AllocateAddress                   equ 2
 ; EFI_ALLOCATE_TYPE_MaxAllocateType                   equ 3
 
 ; EFI_MEMORY_TYPE_ReservedMemory                      equ 0
