@@ -117,12 +117,15 @@ OPTIONAL_HEADER_START:
                 mov rcx, EFI_ALLOCATE_TYPE_AllocateAddress
                 mov rdx, EFI_MEMORY_TYPE_LoaderData
                 mov r8, 3                                                ; Number of contiguous pages to allocate. This should give 12kb
-                mov r9, 0x1000                                          ; Memory address we would prefer to be allocated. Cannot be null
+                lea r9, [DATA.base_address_for_locate_handle]            ; Memory address we would prefer to be allocated. Cannot be null
                 call rbx
 
-                cmp rax, EFI_SUCCESS                                    ; Check if the allocation was successful
-                jne ContinueEntryPoint2.error                           ; If there's error, exit with the error message
-                mov rbx, [abs 0x1000]                                   ; EFI says Memory which we passed as 0x1000 will contain the base of the allocated pages
+                add rsp, 32
+                ret
+
+                ; cmp rax, EFI_SUCCESS                                    ; Check if the allocation was successful
+                ; jne ContinueEntryPoint2.error                           ; If there's error, exit with the error message
+                ; mov rbx, [abs 0x1000]                                   ; EFI says Memory which we passed as 0x1000 will contain the base of the allocated pages
 
                 jmp ContinueEntryPoint2
 
@@ -161,7 +164,7 @@ CODE:
         mov rcx, EFI_LOCATE_SEARCH_TYPE_ByProtocol                          ; We want to Locate By protocol, specifically block io
         lea rdx, [OPTIONAL_HEADER_START.BLOCK_IO_PROTOCOL_GUID_DATA1]       ; GUID for BLOCK_IO_PROTOCOL.
         xor r8, r8                                                          ; Third param. Ignored if searching by protocol
-        mov r9, 0x3000                                                      ; Fourth param. Buffer size of what we allocated earlier. 3 pages at 4kb per page = 12kb
+        lea r9, [DATA.locate_handle_buffer_size]                            ; Fourth param. Pointer to the size of the buffer we allocated earlier. 3 pages at 4kb per page = 12kb
         push rbx                                                            ; Fifth param. Should be on the stack. This is the base address of the buffer
         
         ; Having setup the parameters, find LocateHandle() and call it
@@ -172,8 +175,8 @@ CODE:
         mov rbp, [rbp]
         call rbp
 
-        call PrintRaxHex
-        jmp $
+        ;call PrintRaxHex
+        ;jmp $
 
         xor rax, rax
         add rsp, 32
@@ -286,7 +289,8 @@ DATA:
 
     .mem_print_buffer: times 98 db 0                ; Buffer for printing memory bytes
 
-    
+    .locate_handle_buffer_size: dq 0x3000           ; Buffer size for LocateHandle to use
+    .base_address_for_locate_handle: dq 0x1000      ; Base address for buffer to be allocated for LocateHandle
 DATA_END:
 
 times 4096-($-PE)   db 0
