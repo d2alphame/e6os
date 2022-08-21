@@ -120,13 +120,9 @@ OPTIONAL_HEADER_START:
                 lea r9, [DATA.base_address_for_locate_handle]            ; Memory address we would prefer to be allocated. Cannot be null
                 call rbx
 
-                add rsp, 32
-                ret
-
-                ; cmp rax, EFI_SUCCESS                                    ; Check if the allocation was successful
-                ; jne ContinueEntryPoint2.error                           ; If there's error, exit with the error message
-                ; mov rbx, [abs 0x1000]                                   ; EFI says Memory which we passed as 0x1000 will contain the base of the allocated pages
-
+                cmp rax, EFI_SUCCESS                                     ; Check if the allocation was successful
+                jne ContinueEntryPoint2.error                            ; If there's error, exit with the error message
+                
                 jmp ContinueEntryPoint2
 
             times 80 - ($ - ContinueEntryPoint) db 0
@@ -162,11 +158,10 @@ CODE:
     ; The entry point continues from here
     ContinueEntryPoint2:
         mov rcx, EFI_LOCATE_SEARCH_TYPE_ByProtocol                          ; We want to Locate By protocol, specifically block io
-        lea rdx, [OPTIONAL_HEADER_START.BLOCK_IO_PROTOCOL_GUID_DATA1]       ; GUID for BLOCK_IO_PROTOCOL.
-        xor r8, r8                                                          ; Third param. Ignored if searching by protocol
-        lea r9, [DATA.locate_handle_buffer_size]                            ; Fourth param. Pointer to the size of the buffer we allocated earlier. 3 pages at 4kb per page = 12kb
-        push rbx                                                            ; Fifth param. Should be on the stack. This is the base address of the buffer
-        
+        lea rdx, [OPTIONAL_HEADER_START.BLOCK_IO_PROTOCOL_GUID_DATA1]       ; GUID for BLOCK_IO_PROTOCOL.        
+        lea r8, [DATA.locate_handle_buffer_size]                            ; Fourth param. Pointer to the size of the buffer we allocated earlier.
+        lea r9, [DATA.base_address_for_locate_handle]
+
         ; Having setup the parameters, find LocateHandle() and call it
         mov rbp, r14
         add rbp, EFI_BOOTSERVICES
@@ -175,8 +170,9 @@ CODE:
         mov rbp, [rbp]
         call rbp
 
-        ;call PrintRaxHex
-        ;jmp $
+        ; lea rax, [DATA.locate_handle_buffer_size]
+        call PrintRaxHex
+        jmp $
 
         xor rax, rax
         add rsp, 32
