@@ -116,7 +116,7 @@ OPTIONAL_HEADER_START:
                 mov rbx, [rbx]
                 mov rcx, EFI_ALLOCATE_TYPE_AllocateAddress
                 mov rdx, EFI_MEMORY_TYPE_LoaderData
-                mov r8, 3                                               ; Number of contiguous pages to allocate. This should give 12kb
+                mov r8, 3                                                ; Number of contiguous pages to allocate. This should give 12kb
                 mov r9, 0x1000                                          ; Memory address we would prefer to be allocated. Cannot be null
                 call rbx
 
@@ -124,15 +124,7 @@ OPTIONAL_HEADER_START:
                 jne ContinueEntryPoint2.error                           ; If there's error, exit with the error message
                 mov rbx, [abs 0x1000]                                   ; EFI says Memory which we passed as 0x1000 will contain the base of the allocated pages
 
-                mov rcx, EFI_LOCATE_SEARCH_TYPE_ByProtocol                          ; We want to Locate By protocol, specifically block io
-
-
-                ; Call EFI LocateDevice Handle by protocol. Now we have 12kb at a given base
-                ; address pointed to in [rbx]
-
-
                 jmp ContinueEntryPoint2
-
 
             times 80 - ($ - ContinueEntryPoint) db 0
 
@@ -166,9 +158,23 @@ SECTION_HEADERS:
 CODE:
     ; The entry point continues from here
     ContinueEntryPoint2:
-
-        lea rdx, [OPTIONAL_HEADER_START.BLOCK_IO_PROTOCOL_GUID_DATA1]       ; GUID for BLOCK_IO_PROTOCOL. ContinueEntryPoint for the first parameter
+        mov rcx, EFI_LOCATE_SEARCH_TYPE_ByProtocol                          ; We want to Locate By protocol, specifically block io
+        lea rdx, [OPTIONAL_HEADER_START.BLOCK_IO_PROTOCOL_GUID_DATA1]       ; GUID for BLOCK_IO_PROTOCOL.
         xor r8, r8                                                          ; Third param. Ignored if searching by protocol
+        mov r9, 0x3000                                                      ; Fourth param. Buffer size of what we allocated earlier. 3 pages at 4kb per page = 12kb
+        push rbx                                                            ; Fifth param. Should be on the stack. This is the base address of the buffer
+        
+        ; Having setup the parameters, find LocateHandle() and call it
+        mov rbp, r14
+        add rbp, EFI_BOOTSERVICES
+        mov rbp, [rbp]
+        add rbp, EFI_BOOTSERVICES_LocateHandle
+        mov rbp, [rbp]
+        call rbp
+
+        call PrintRaxHex
+        jmp $
+
         xor rax, rax
         add rsp, 32
         ret
@@ -279,6 +285,8 @@ DATA:
     .rax_print_buffer_null_terminator: dw 0         ; EFI requires this to print a string
 
     .mem_print_buffer: times 98 db 0                ; Buffer for printing memory bytes
+
+    
 DATA_END:
 
 times 4096-($-PE)   db 0
