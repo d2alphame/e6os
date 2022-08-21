@@ -37,13 +37,21 @@ OPTIONAL_HEADER_START:
     .IMAGE_BASE                 dq 0x400000                     ; Where in memory we would prefer the image to be loaded at
     .SECTION_ALIGNMENT          dd 0x1000                       ; Alignment in bytes of sections when they are loaded in memory. Align to page boundry (4kb)
     .FILE_ALIGNMENT             dd 0x1000                       ; Alignment of sections in the file. Also align to 4kb 
-    .MAJOR_OS_VERSION           dw 0x00                         ; I'm not sure UEFI requires these and the following 'version woo'
-    .MINOR_OS_VERSION           dw 0x00                         ; More of these version thingies are to follow. Again, not sure UEFI needs them
-    .MAJOR_IMAGE_VERSION        dw 0x00                         ; Major version of the image
-    .MINOR_IMAGE_VERSION        dw 0x00                         ; Minor version of the image
-    .MAJOR_SUBSYSTEM_VERSION    dw 0x00                         ; 
-    .MINOR_SUBSYSTEM_VERSION    dw 0x00                         ;
-    .WIN32_VERSION_VALUE        dd 0x00                         ; Reserved, must be 0
+    
+    ; Normally what should follow should be the following fields, but they are of no use to this application.
+    ; So the 16 bytes will be used for BLOCK_IO_PROTOCOL_GUID ===============================================
+    ; .MAJOR_OS_VERSION           dw 0x00                         ; I'm not sure UEFI requires these and the following 'version woo'
+    ; .MINOR_OS_VERSION           dw 0x00                         ; More of these version thingies are to follow. Again, not sure UEFI needs them
+    ; .MAJOR_IMAGE_VERSION        dw 0x00                         ; Major version of the image
+    ; .MINOR_IMAGE_VERSION        dw 0x00                         ; Minor version of the image
+    ; .MAJOR_SUBSYSTEM_VERSION    dw 0x00                         ; 
+    ; .MINOR_SUBSYSTEM_VERSION    dw 0x00                         ;
+    ; .WIN32_VERSION_VALUE        dd 0x00                         ; Reserved, must be 0
+    .BLOCK_IO_PROTOCOL_GUID_DATA1   dd 0x964E5B21
+    .BLOCK_IO_PROTOCOL_GUID_DATA2   dw 0x6459
+    .BLOCK_IO_PROTOCOL_GUID_DATA3   dw 0x11D2
+    .BLOCK_IO_PROTOCOL_GUID_DATA4   db 0x8E, 0x39, 0x00, 0xA0, 0xC9, 0x69, 0x72, 0x3B
+
     .IMAGE_SIZE                 dd END - START                  ; The size in bytes of the image when loaded in memory including all headers
     .HEADERS_SIZE               dd HEADER_END - HEADER_START    ; Size of all the headers
     .CHECKSUM                   dd 0x00                         ; Hoping this doesn't break the application
@@ -116,8 +124,8 @@ OPTIONAL_HEADER_START:
                 jne ContinueEntryPoint2.error                           ; If there's error, exit with the error message
                 mov rbx, [abs 0x1000]                                   ; EFI says Memory which we passed as 0x1000 will contain the base of the allocated pages
 
-                mov rcx, EFI_LOCATE_SEARCH_TYPE_ByProtocol              ; We want to Locate By protocol, specifically block io
-                ; mov rdx, 
+                mov rcx, EFI_LOCATE_SEARCH_TYPE_ByProtocol                          ; We want to Locate By protocol, specifically block io
+
 
                 ; Call EFI LocateDevice Handle by protocol. Now we have 12kb at a given base
                 ; address pointed to in [rbx]
@@ -159,6 +167,8 @@ CODE:
     ; The entry point continues from here
     ContinueEntryPoint2:
 
+        lea rdx, [OPTIONAL_HEADER_START.BLOCK_IO_PROTOCOL_GUID_DATA1]       ; GUID for BLOCK_IO_PROTOCOL. ContinueEntryPoint for the first parameter
+        xor r8, r8                                                          ; Third param. Ignored if searching by protocol
         xor rax, rax
         add rsp, 32
         ret
