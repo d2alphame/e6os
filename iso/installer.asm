@@ -108,21 +108,26 @@ OPTIONAL_HEADER_START:
                 call rbx
 
                 ; Detect storage devices/partitions/volumes on the system
-                ; To do that we need to first allocate memory pages
+
+                ; We'll need to call LocateHandle first which would give us back the amount of memory that would be
+                ; needed. Call LocateHandle with 0 buffer size first.
+                mov rcx, EFI_LOCATE_SEARCH_TYPE_ByProtocol                          ; We want to Locate By protocol, specifically block io
+                lea rdx, [OPTIONAL_HEADER_START.BLOCK_IO_PROTOCOL_GUID_DATA1]       ; GUID for BLOCK_IO_PROTOCOL.        
+                lea r8, [DATA.locate_handle_buffer_size]                            ; Third parameter for search by protocol is pointer to buffer size
+                lea r9, [DATA.base_address_for_locate_handle]                       ; Pointer to base address of buffer. Not needed for now
+
+                ; Having setup the parameters, find LocateHandle() and call it
                 mov rbx, r14
                 add rbx, EFI_BOOTSERVICES
                 mov rbx, [rbx]
-                add rbx, EFI_BOOTSERVICES_AllocatePages
+                add rbx, EFI_BOOTSERVICES_LocateHandle
                 mov rbx, [rbx]
-                mov rcx, EFI_ALLOCATE_TYPE_AllocateAddress
-                mov rdx, EFI_MEMORY_TYPE_LoaderData
-                mov r8, 3                                                ; Number of contiguous pages to allocate. This should give 12kb
-                lea r9, [DATA.base_address_for_locate_handle]            ; Memory address we would prefer to be allocated. Cannot be null
                 call rbx
 
-                cmp rax, EFI_SUCCESS                                     ; Check if the allocation was successful
-                jne ContinueEntryPoint2.error                            ; If there's error, exit with the error message
-                
+                ; Now we know the size of the buffer that we need. Next we'll do some setup and allocate enough pages
+                ; for the buffer.
+
+
                 jmp ContinueEntryPoint2
 
             times 80 - ($ - ContinueEntryPoint) db 0
@@ -157,20 +162,22 @@ SECTION_HEADERS:
 CODE:
     ; The entry point continues from here
     ContinueEntryPoint2:
-        mov rcx, EFI_LOCATE_SEARCH_TYPE_ByProtocol                          ; We want to Locate By protocol, specifically block io
-        lea rdx, [OPTIONAL_HEADER_START.BLOCK_IO_PROTOCOL_GUID_DATA1]       ; GUID for BLOCK_IO_PROTOCOL.        
-        lea r8, [DATA.locate_handle_buffer_size]                            ; Fourth param. Pointer to the size of the buffer we allocated earlier.
-        lea r9, [DATA.base_address_for_locate_handle]
 
-        ; Having setup the parameters, find LocateHandle() and call it
-        mov rbp, r14
-        add rbp, EFI_BOOTSERVICES
-        mov rbp, [rbp]
-        add rbp, EFI_BOOTSERVICES_LocateHandle
-        mov rbp, [rbp]
-        call rbp
+        ; Allocate Memory pages
+        mov rbx, r14
+        add rbx, EFI_BOOTSERVICES
+        mov rbx, [rbx]
+        add rbx, EFI_BOOTSERVICES_AllocatePages
+        mov rbx, [rbx]
+        mov rcx, EFI_ALLOCATE_TYPE_AllocateAddress
+        mov rdx, EFI_MEMORY_TYPE_LoaderData
+        mov r8, 3                                                ; Number of contiguous pages to allocate. This should give 12kb
+        lea r9, [DATA.base_address_for_locate_handle]            ; Memory address we would prefer to be allocated. Cannot be null
+        call rbx
 
-        ; lea rax, [DATA.locate_handle_buffer_size]
+        cmp rax, EFI_SUCCESS                                     ; Check if the allocation was successful
+        jne ContinueEntryPoint2.error                            ; If there's error, exit with the error message
+                
         call PrintRaxHex
         jmp $
 
@@ -285,9 +292,10 @@ DATA:
 
     .mem_print_buffer: times 98 db 0                ; Buffer for printing memory bytes
 
-    .locate_handle_buffer_size: dq 0x3000           ; Buffer size for LocateHandle to use
+    .locate_handle_buffer_size: dq 0x00             ; Buffer size for LocateHandle to use
     .base_address_for_locate_handle: dq 0x1000      ; Base address for buffer to be allocated for LocateHandle
 DATA_END:
+
 
 times 4096-($-PE)   db 0
 HEADER_END:
