@@ -107,14 +107,17 @@ OPTIONAL_HEADER_START:
                 lea rdx, [STANDARD_HEADER.E6_STARTUP_MESSAGE]
                 call rbx
 
+
                 ; Detect storage devices/partitions/volumes on the system
 
                 ; We'll need to call LocateHandle first which would give us back the amount of memory that would be
-                ; needed. Call LocateHandle with 0 buffer size first.
+                ; needed. Call LocateHandle with 0 buffer size first. Note that the third parameter which should have
+                ; been in r8 is missing because searching by protocol does not require it
                 mov rcx, EFI_LOCATE_SEARCH_TYPE_ByProtocol                          ; We want to Locate By protocol, specifically block io
                 lea rdx, [OPTIONAL_HEADER_START.BLOCK_IO_PROTOCOL_GUID_DATA1]       ; GUID for BLOCK_IO_PROTOCOL.        
-                lea r8, [DATA.locate_handle_buffer_size]                            ; Third parameter for search by protocol is pointer to buffer size
-                lea r9, [DATA.base_address_for_locate_handle]                       ; Pointer to base address of buffer. Not needed for now
+                lea r9, [DATA.locate_handle_buffer_size]
+                lea rbp, [DATA.base_address_for_locate_handle]
+                push rbp
 
                 ; Having setup the parameters, find LocateHandle() and call it
                 mov rbx, r14
@@ -124,9 +127,12 @@ OPTIONAL_HEADER_START:
                 mov rbx, [rbx]
                 call rbx
 
-                ; Now we know the size of the buffer that we need. Next we'll do some setup and allocate enough pages
-                ; for the buffer.
+                pop rbp                                                             ; Remember to restore the stack
 
+                ; Now we know the size of the buffer size that we need. Next we'll do some setup and allocate enough pages
+                ; for the buffer. First we need to calculate the number of pages we need for the buffer
+                lea r8, [DATA.locate_handle_buffer_size]
+                mov r8, [r8]
 
                 jmp ContinueEntryPoint2
 
@@ -162,18 +168,36 @@ SECTION_HEADERS:
 CODE:
     ; The entry point continues from here
     ContinueEntryPoint2:
-
+        mov rax, r8
+        and rax, 0xFFF                                                      ; Get the remainder when divided by 4096.
+        shr r8, 12                                                          ; Effectively dividing by 4096
+        cmp rax, 0                                                          ; If there's a remainder we need to increment the number of pages
+        je .continue
+        inc r8
+        
+        .continue:
+        ; Setup parameters. We'd like to call AllocatePages(). The r8 register already contains the number of pages
+        mov rcx, EFI_ALLOCATE_TYPE_AllocateAnyPages
+        mov rdx, EFI_MEMORY_TYPE_LoaderData
+        lea r9, [DATA.base_address_for_locate_handle]
+    
         ; Allocate Memory pages
         mov rbx, r14
         add rbx, EFI_BOOTSERVICES
         mov rbx, [rbx]
         add rbx, EFI_BOOTSERVICES_AllocatePages
         mov rbx, [rbx]
-        mov rcx, EFI_ALLOCATE_TYPE_AllocateAddress
-        mov rdx, EFI_MEMORY_TYPE_LoaderData
-        mov r8, 3                                                ; Number of contiguous pages to allocate. This should give 12kb
-        lea r9, [DATA.base_address_for_locate_handle]            ; Memory address we would prefer to be allocated. Cannot be null
         call rbx
+
+        lea rax, [DATA.base_address_for_locate_handle]
+        mov rax, [rax]
+        call PrintRaxHex
+        jmp $
+
+        
+        xor rax, rax
+        add rsp, 32
+        ret
 
         cmp rax, EFI_SUCCESS                                     ; Check if the allocation was successful
         jne ContinueEntryPoint2.error                            ; If there's error, exit with the error message
