@@ -189,29 +189,9 @@ CODE:
         mov rbx, [rbx]
         call rbx
 
-        lea rax, [DATA.base_address_for_locate_handle]
-        mov rax, [rax]
-        call PrintRaxHex
-        jmp $
-
-        
         xor rax, rax
         add rsp, 32
         ret
-
-        cmp rax, EFI_SUCCESS                                     ; Check if the allocation was successful
-        jne ContinueEntryPoint2.error                            ; If there's error, exit with the error message
-                
-        call PrintRaxHex
-        jmp $
-
-        xor rax, rax
-        add rsp, 32
-        ret
-
-        .error:
-            add rsp, 32
-            ret
 
     ; Prints out the value of RAX in hexadecimal
     ; In RAX the number to print
