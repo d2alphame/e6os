@@ -107,36 +107,33 @@ OPTIONAL_HEADER_START:
                 lea rdx, [STANDARD_HEADER.E6_STARTUP_MESSAGE]
                 call rbx
 
+                ; Detect storage devices/partitions/volumes on the system. To do this, we'll need the Block io protocol
+                call LocateHandleByProtocol                                 ; Call with buffer size of 0. On return, we'll get buffer size actually needed
 
-                ; Detect storage devices/partitions/volumes on the system
-
-                ; We'll need to call LocateHandle first which would give us back the amount of memory that would be
-                ; needed. Call LocateHandle with 0 buffer size first. Note that the third parameter which should have
-                ; been in r8 is missing because searching by protocol does not require it
-                mov rcx, EFI_LOCATE_SEARCH_TYPE_ByProtocol                          ; We want to Locate By protocol, specifically block io
-                lea rdx, [OPTIONAL_HEADER_START.BLOCK_IO_PROTOCOL_GUID_DATA1]       ; GUID for BLOCK_IO_PROTOCOL.        
-                lea r9, [DATA.locate_handle_buffer_size]
-                lea rbp, [DATA.base_address_for_locate_handle]
-                push rbp
-
-                ; Having setup the parameters, find LocateHandle() and call it
-                mov rbx, r14
-                add rbx, EFI_BOOTSERVICES
-                mov rbx, [rbx]
-                add rbx, EFI_BOOTSERVICES_LocateHandle
-                mov rbx, [rbx]
-                call rbx
-
-                pop rbp                                                             ; Remember to restore the stack
-
-                ; Now we know the size of the buffer size that we need. Next we'll do some setup and allocate enough pages
-                ; for the buffer. First we need to calculate the number of pages we need for the buffer
+                ; Now we know the size of the buffer that we need. Next we'll do some setup and allocate enough pages
+                ; for the buffer. But first, we need to calculate the number of pages we need for the buffer
                 lea r8, [DATA.locate_handle_buffer_size]
                 mov r8, [r8]
+                mov rax, r8
+                and rax, 0xFFF                                                      ; Get the remainder when divided by 4096.
+                shr r8, 12                                                          ; Effectively dividing by 4096
+                cmp rax, 0                                                          ; If there's a remainder we need to increment the number of pages
+                je .continue
+                inc r8
 
-                jmp ContinueEntryPoint2
+                .continue:
+                ; Setup parameters. We'd like to call AllocatePages(). The r8 register already contains the number of pages
+                mov rcx, EFI_ALLOCATE_TYPE_AllocateAnyPages
+                mov rdx, EFI_MEMORY_TYPE_LoaderData
+                lea r9, [DATA.base_address_for_locate_handle]
 
-            times 80 - ($ - ContinueEntryPoint) db 0
+                ; Allocate Memory pages
+                mov rbx, r14
+                add rbx, EFI_BOOTSERVICES
+
+                jmp ContinueEntryPoint2                 ; Allocate Memory Pages - To Be Continued
+
+            times 80 - ($ - ContinueEntryPoint) db 0    ; To continue, jump over the section headers that follow
 
 OPTIONAL_HEADER_STOP:
 
@@ -168,28 +165,50 @@ SECTION_HEADERS:
 CODE:
     ; The entry point continues from here
     ContinueEntryPoint2:
-        mov rax, r8
-        and rax, 0xFFF                                                      ; Get the remainder when divided by 4096.
-        shr r8, 12                                                          ; Effectively dividing by 4096
-        cmp rax, 0                                                          ; If there's a remainder we need to increment the number of pages
-        je .continue
-        inc r8
-        
-        .continue:
-        ; Setup parameters. We'd like to call AllocatePages(). The r8 register already contains the number of pages
-        mov rcx, EFI_ALLOCATE_TYPE_AllocateAnyPages
-        mov rdx, EFI_MEMORY_TYPE_LoaderData
-        lea r9, [DATA.base_address_for_locate_handle]
-    
-        ; Allocate Memory pages
-        mov rbx, r14
-        add rbx, EFI_BOOTSERVICES
         mov rbx, [rbx]
         add rbx, EFI_BOOTSERVICES_AllocatePages
         mov rbx, [rbx]
+        mov r12, r8
         call rbx
 
+        ; Now we have the number of pages we need. Do some preparations before calling LocateHandle() again
+        lea r9, [DATA.locate_handle_buffer_size]
+        shl r12, 12                                                     ; Multiply by 4096. (Number of bytes per page)
+        mov [r9], qword r12
+        call LocateHandleByProtocol
+
+
+        lea rax, [DATA.locate_handle_buffer_size]
+        mov rax, [rax]
+        call PrintRaxHex
+        jmp $
+
         xor rax, rax
+        add rsp, 32
+        ret
+
+        .error:
+
+    ; Function that calls EFI LocateHandle()
+    LocateHandleByProtocol:
+        sub rsp, 32
+
+        ; Note that the third parameter which should have been in r8 is missing because searching by protocol does not require it
+        mov rcx, EFI_LOCATE_SEARCH_TYPE_ByProtocol                          ; We want to Locate By protocol, specifically block io
+        lea rdx, [OPTIONAL_HEADER_START.BLOCK_IO_PROTOCOL_GUID_DATA1]       ; GUID for BLOCK_IO_PROTOCOL.        
+        lea r9, [DATA.locate_handle_buffer_size]
+        lea rbp, [DATA.base_address_for_locate_handle]
+        push rbp                                                            ; Parameter 5 goes on the stack
+
+        ; Having setup the parameters, find LocateHandle() and call it
+        mov rbx, r14
+        add rbx, EFI_BOOTSERVICES
+        mov rbx, [rbx]
+        add rbx, EFI_BOOTSERVICES_LocateHandle
+        mov rbx, [rbx]
+        call rbx
+        pop rbp                                                             ; Remember to restore the stack
+
         add rsp, 32
         ret
 
@@ -325,10 +344,27 @@ EFI_LOCATE_SEARCH_TYPE_ByProtocol                   equ 2
 EFI_ALLOCATE_TYPE_AllocateAnyPages                  equ 0
 EFI_ALLOCATE_TYPE_AllocateMaxAddress                equ 1
 EFI_ALLOCATE_TYPE_AllocateAddress                   equ 2
-; EFI_ALLOCATE_TYPE_MaxAllocateType                   equ 3
+EFI_ALLOCATE_TYPE_MaxAllocateType                   equ 3
 
-; EFI_MEMORY_TYPE_ReservedMemory                      equ 0
-; EFI_MEMORY_TYPE_LoaderCode                          equ 1
+EFI_BLOCK_IO_PROTOCOL_Revision                      equ 0
+EFI_BLOCK_IO_PROTOCOL_Media                         equ 8
+EFI_BLOCK_IO_PROTOCOL_Reset                         equ 16
+EFI_BLOCK_IO_PROTOCOL_ReadBlocks                    equ 24
+EFI_BLOCK_IO_PROTOCOL_WriteBlocks                   equ 32
+EFI_BLOCK_IO_PROTOCOL_FlushBlocks                   equ 40
+
+EFI_BLOCK_IO_MEDIA_MediaId                          equ 0
+EFI_BLOCK_IO_MEDIA_RemovableMedia                   equ 4
+EFI_BLOCK_IO_MEDIA_MediaPresent                     equ 5
+EFI_BLOCK_IO_MEDIA_LogicalPartition                 equ 6
+EFI_BLOCK_IO_MEDIA_ReadOnly                         equ 7
+EFI_BLOCK_IO_MEDIA_WriteCaching                     equ 8
+EFI_BLOCK_IO_MEDIA_BlockSize                        equ 12
+EFI_BLOCK_IO_MEDIA_IoAlign                          equ 16
+EFI_BLOCK_IO_MEDIA_LastBlock                        equ 24
+
+EFI_MEMORY_TYPE_ReservedMemory                      equ 0
+EFI_MEMORY_TYPE_LoaderCode                          equ 1
 EFI_MEMORY_TYPE_LoaderData                          equ 2
-; EFI_MEMORY_TYPE_BootServicesCode                    equ 3
-; EFI_MEMORY_TYPE_BootServicesData                    equ 4
+EFI_MEMORY_TYPE_BootServicesCode                    equ 3
+EFI_MEMORY_TYPE_BootServicesData                    equ 4
