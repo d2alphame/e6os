@@ -177,11 +177,26 @@ CODE:
         mov [r9], qword r12
         call LocateHandleByProtocol
 
+        ; Now we've got the handles for a bunch of block io devices
+        lea r10, [DATA.locate_handle_buffer_size]
+        mov r10, [r10]
+        lea rsi, [DATA.base_address_for_locate_handle]
+        mov rsi, [rsi]
+        shr r10, 3                                                      ; Divide by 8 to get number of handles in the handles array
 
-        lea rax, [DATA.locate_handle_buffer_size]
-        mov rax, [rax]
-        call PrintRaxHex
-        jmp $
+        .loop_handles:
+            cmp r10, 0
+            jz .loop_handles_done
+            
+            ; Call HandleProtocol on each handle
+            lodsq
+            mov rcx, rax
+            lea rdx, OPTIONAL_HEADER_START.BLOCK_IO_PROTOCOL_GUID_DATA1
+            lea r8, DATA.BLOCK_IO_PROTOCOL_INTERFACE
+            
+            dec r10
+            jmp .loop_handles
+        .loop_handles_done:
 
         xor rax, rax
         add rsp, 32
@@ -317,10 +332,14 @@ DATA:
 
     .locate_handle_buffer_size: dq 0x00             ; Buffer size for LocateHandle to use
     .base_address_for_locate_handle: dq 0x1000      ; Base address for buffer to be allocated for LocateHandle
+
+    .detected_harddisks_message: db __utf16__ `Detected Disks\r\n\0`
+
+    .BLOCK_IO_PROTOCOL_INTERFACE: dq 0
 DATA_END:
 
 
-times 4096-($-PE)   db 0
+; times 4096-($-PE)   db 0
 HEADER_END:
 
 END:
