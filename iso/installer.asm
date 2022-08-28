@@ -191,9 +191,21 @@ CODE:
             ; Call HandleProtocol on each handle
             lodsq
             mov rcx, rax
-            lea rdx, OPTIONAL_HEADER_START.BLOCK_IO_PROTOCOL_GUID_DATA1
-            lea r8, DATA.BLOCK_IO_PROTOCOL_INTERFACE
+            lea rdx, [OPTIONAL_HEADER_START.BLOCK_IO_PROTOCOL_GUID_DATA1]
+            lea r8, [DATA.BLOCK_IO_PROTOCOL_INTERFACE]
             
+            mov rbx, r14
+            add rbx, EFI_BOOTSERVICES
+            mov rbx, [rbx]
+            add rbx, EFI_BOOTSERVICES_HandleProtocol
+            mov rbx, [rbx]
+            call rbx
+            
+            add rsp, 32
+            xor rax, rax
+            ret
+
+
             dec r10
             jmp .loop_handles
         .loop_handles_done:
@@ -335,11 +347,11 @@ DATA:
 
     .detected_harddisks_message: db __utf16__ `Detected Disks\r\n\0`
 
-    .BLOCK_IO_PROTOCOL_INTERFACE: dq 0
+    .BLOCK_IO_PROTOCOL_INTERFACE: dq 0x2000
 DATA_END:
 
 
-; times 4096-($-PE)   db 0
+times 4096-($-PE)   db 0
 HEADER_END:
 
 END:
@@ -354,6 +366,7 @@ EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_ClearScreen         equ 48
 
 EFI_BOOTSERVICES                                    equ 96
 EFI_BOOTSERVICES_AllocatePages                      equ 40
+EFI_BOOTSERVICES_HandleProtocol                     equ 152
 EFI_BOOTSERVICES_LocateHandle                       equ 176
 
 EFI_LOCATE_SEARCH_TYPE_AllHandles                   equ 0
