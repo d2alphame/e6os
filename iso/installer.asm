@@ -70,6 +70,7 @@ OPTIONAL_HEADER_START:
     ; rather than have 40 bytes worth of nothing but zeros, we'll like to put something useful in here.
 
             EntryPoint:
+
                 ; First order of business is to store the values that were passed to us by EFI
                 ; Here I've decided to put them in efi non-volatile registers
                 mov r13, rcx
@@ -84,10 +85,7 @@ OPTIONAL_HEADER_START:
                 mov rbx, [rdx]                                                  ; Load the pointer to the function in preparation for the call
                 sub rsp, 32                                                     ; Shadow space on the stack
                 call rbx
-
-				; Print e6 installer's message above.
-                mov rbx, r15
-                mov rcx, r15
+                add rsp, 32
 
                 jmp ContinueEntryPoint                                          ; Jump over the RELOC data directory entry below and continue. Still trying to clear the screen
                     times 40 - ($ - DATA_DIRECTORIES) db 0                      ; This is here so nasm would squeal in case we go past 40 bytes
@@ -101,11 +99,15 @@ OPTIONAL_HEADER_START:
             ; 10 more data directory entries are supposed to follow. However, because we don't need those data directory
             ; entries, their space here will be used for something a little more useful.
             ContinueEntryPoint:
-
+				; Print e6 installer's message above.
+                sub rsp, 32
+                mov rbx, r15
+                mov rcx, r15
                 add rbx, EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_OutputString
                 mov rbx, [rbx]
                 lea rdx, [STANDARD_HEADER.E6_STARTUP_MESSAGE]
                 call rbx
+                add rsp, 32
 
                 ; Detect storage devices/partitions/volumes on the system. To do this, we'll need the Block io protocol
                 call LocateHandleByProtocol                                 ; Call with buffer size of 0. On return, we'll get buffer size actually needed
@@ -125,11 +127,6 @@ OPTIONAL_HEADER_START:
                 ; Setup parameters. We'd like to call AllocatePages(). The r8 register already contains the number of pages
                 mov rcx, EFI_ALLOCATE_TYPE_AllocateAnyPages
                 mov rdx, EFI_MEMORY_TYPE_LoaderData
-                lea r9, [DATA.base_address_for_locate_handle]
-
-                ; Allocate Memory pages
-                mov rbx, r14
-                add rbx, EFI_BOOTSERVICES
 
                 jmp ContinueEntryPoint2                 ; Allocate Memory Pages - To Be Continued
 
@@ -165,17 +162,29 @@ SECTION_HEADERS:
 CODE:
     ; The entry point continues from here
     ContinueEntryPoint2:
+        lea r9, [DATA.base_address_for_locate_handle]
+
+        ; Allocate Memory pages
+        mov rbx, r14
+        add rbx, EFI_BOOTSERVICES
+        push r8
+        sub rsp, 32
         mov rbx, [rbx]
         add rbx, EFI_BOOTSERVICES_AllocatePages
         mov rbx, [rbx]
-        mov r12, r8
         call rbx
+        add rsp, 32
+        pop r8
 
         ; Now we have the number of pages we need. Do some preparations before calling LocateHandle() again
+        shl r8, 12                                      ; Multiply by 4096 (bytes per page). We want the actual number of bytes of the buffer
         lea r9, [DATA.locate_handle_buffer_size]
-        shl r12, 12                                                     ; Multiply by 4096. (Number of bytes per page)
-        mov [r9], qword r12
+        mov [r9], qword r8
+
         call LocateHandleByProtocol
+
+        xor rax, rax
+        ret
 
         ; Now we've got the handles for a bunch of block io devices
         lea r10, [DATA.locate_handle_buffer_size]
@@ -267,12 +276,14 @@ CODE:
             jmp .loop
         .done:
             ; Print the buffer we just set up
+            sub rsp, 32
             mov rbx, r15
             mov rcx, r15
             add rbx, EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_OutputString
             mov rbx, [rbx]
             lea rdx, [DATA.rax_print_hex_prefix]
             call rbx
+            add rsp, 32
 
             ; Restore registers that were preserved
             pop rdi
@@ -314,12 +325,14 @@ CODE:
             je .done
             jmp .loop
         .done:
+            sub rsp, 32
             mov rbx, r15
             mov rcx, r15
             add rbx, EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_OutputString
             mov rbx, [rbx]
             lea rdx, [DATA.mem_print_buffer]
             call rbx
+            add rsp, 32
 
             pop rdi
             pop rsi
@@ -343,7 +356,7 @@ DATA:
     .mem_print_buffer: times 98 db 0                ; Buffer for printing memory bytes
 
     .locate_handle_buffer_size: dq 0x00             ; Buffer size for LocateHandle to use
-    .base_address_for_locate_handle: dq 0x1000      ; Base address for buffer to be allocated for LocateHandle
+    .base_address_for_locate_handle: dq 0x00        ; Base address for buffer to be allocated for LocateHandle
 
     .detected_harddisks_message: db __utf16__ `Detected Disks\r\n\0`
 
