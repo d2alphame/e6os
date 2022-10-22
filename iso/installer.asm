@@ -181,8 +181,28 @@ CODE:
         lea r9, [DATA.locate_handle_buffer_size]
         mov [r9], qword r8
 
-        call LocateHandleByProtocol
+        ; call LocateHandleByProtocol
+        sub rsp, 32
 
+        ; Note that the third parameter which should have been in r8 is missing because searching by protocol does not require it
+        mov rcx, EFI_LOCATE_SEARCH_TYPE_ByProtocol                          ; We want to Locate By protocol, specifically block io
+        lea rdx, [OPTIONAL_HEADER_START.BLOCK_IO_PROTOCOL_GUID_DATA1]       ; GUID for BLOCK_IO_PROTOCOL.        
+        lea r9, [DATA.locate_handle_buffer_size]
+        lea rbp, [DATA.base_address_for_locate_handle]
+        push rbp                                                            ; Parameter 5 goes on the stack
+
+        ; Having setup the parameters, find LocateHandle() and call it
+        mov rbx, r14
+        add rbx, EFI_BOOTSERVICES
+
+        mov rbx, [rbx]
+        add rbx, EFI_BOOTSERVICES_LocateHandle                              ; This line makes the system hang :(
+
+        mov rbx, [rbx]
+        call rbx
+        pop rbp                                                             ; Remember to restore the stack
+
+        add rsp, 32
         xor rax, rax
         ret
 
