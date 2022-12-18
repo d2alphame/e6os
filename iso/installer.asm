@@ -167,14 +167,12 @@ CODE:
         ; Allocate Memory pages
         mov rbx, r14
         add rbx, EFI_BOOTSERVICES
-        push r8
         sub rsp, 32
         mov rbx, [rbx]
         add rbx, EFI_BOOTSERVICES_AllocatePages
         mov rbx, [rbx]
         call rbx
         add rsp, 32
-        pop r8
 
         ; Now we have the number of pages we need. Do some preparations before calling LocateHandle() again
         shl r8, 12                                      ; Multiply by 4096 (bytes per page). We want the actual number of bytes of the buffer
@@ -185,6 +183,7 @@ CODE:
         sub rsp, 32
 
         ; Note that the third parameter which should have been in r8 is missing because searching by protocol does not require it
+        xor rbx, rbx
         mov rcx, EFI_LOCATE_SEARCH_TYPE_ByProtocol                          ; We want to Locate By protocol, specifically block io
         lea rdx, [OPTIONAL_HEADER_START.BLOCK_IO_PROTOCOL_GUID_DATA1]       ; GUID for BLOCK_IO_PROTOCOL.        
         lea r9, [DATA.locate_handle_buffer_size]
