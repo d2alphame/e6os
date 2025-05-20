@@ -21,3 +21,12 @@
 ; should be no more than 32KiB and should go to the systems area of the 
 ; installation CD/iso image
 
+START:
+mov ah, 0x0E
+mov bx, 0x0007
+mov al, 'E'
+int 10h
+jmp $
+
+times 32768-($-START) db 0
+
