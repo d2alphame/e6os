@@ -37,7 +37,7 @@
 ; ??                              Root Directory
 
 START_ISO:
-;incbin 'forreal_boot.bin'
+incbin 'e6installer.bin'
 times 32768-($-START_ISO) db 0                    ; ISO 9660 specifies that the 32kb is reserved and may be used for other stuff
 
 ; Volume Descriptor Set
