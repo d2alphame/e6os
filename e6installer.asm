@@ -25,7 +25,7 @@
 
 START:
 
-cli                           ; Clear interrupts
+cli                                               ; Clear interrupts
 
 ; Setup a stack we can work with. With the following setup, we keep our fingers
 ; crossed and hope we don't overwrite the IVT and the BDA :D
@@ -34,35 +34,18 @@ mov ss, ax
 mov sp, 0x8000
 mov bp, sp
 
-
-; Setup a flat memory segment with CS=DS=ES
-mov ax, cs
+; Setup a flat segment with CS=DS=ES
+mov ax, INSTALLER_STARTUP_SEGMENT                 ; This is defined in the e6constants.asm file included above
 mov ds, ax
 mov es, ax
 
-sti                           ; Set interrupts again
+sti                                               ; Set interrupts again
 
-mov ax, 0x7c0
-mov ds, ax
-mov es, ax
-xor eax, eax
-push cs
-pop ax
-call print_eax_hex
+; Show the installer's startup message
+mov si, STARTUP_MSG
+xor al, al
+call print_byte_terminated_string
 jmp $
-
-; mov si, STARTUP_MSG
-; xor al, al
-; call print_byte_terminated_string
-; jmp $
-
-; mov ah, 0x0E
-; mov bx, 0x0007
-; mov al, 'E'
-; int 10h
-; jmp $
-
-
 
 ; A bunch of functions that will be useful
 ; ========================================
@@ -74,13 +57,6 @@ print_byte_terminated_string:
   ;    DS:SI - Location of string to print
   ;    AL    - The byte that terminates the string
   ;----------------------------------------------------
-
-; mov ah, 0x0E
-; mov bx, 0x0007
-; mov al, 'E'
-; int 10h
-; jmp $
-
   push dx
   mov dl, al
   mov ah, 0x0E

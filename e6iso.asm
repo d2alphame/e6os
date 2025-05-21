@@ -175,7 +175,7 @@ BOOT_CATALOG:
     INITIAL_DEFAULT_ENTRY:
         .boot_indicator         db 0x88                                 ; Bootable. 0x00 for not bootable
         .boot_media_type        db 0x00                                 ; No emulation
-        .load_segment           dw 0x000                                ; Segment where the image will be loaded. Make this 0 to default to 0x7C0
+        .load_segment           dw INSTALLER_STARTUP_SEGMENT            ; Segment where the image will be loaded. Make this 0 to default to 0x7C0
         .system_type            db 0xEE                                 ; Must be a copy of byte 5 from the partition table in the boot image
         .unused_1               db 0x00
         .sector_count           dw 0x10                                 ; Number of sectors to load into memory during boot.
