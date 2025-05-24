@@ -4,6 +4,8 @@ use v5.34.0;
 use strict;
 use warnings;
 
+use Getopt::Long;
+
 sub get_random_string {
     my $length = shift || 16;
     my $str = '';
@@ -17,25 +19,61 @@ sub assemble {
     my $src = shift;
     my $dest = shift;
     `nasm -f bin -o $dest $src`;
-    my $size = -s $dest;
-    say $size;
 }
 
-
-# assemble 'e6installer.asm', 'e6installer.bin';
-
-my $e6installer_random = get_random_string;
-my $e6installer_start_str = "start_$e6installer_random";
-my $e6installer_outfile = "e6installer_$e6installer_random.asm";
-
-open my $e6installer_out, '>>', $e6installer_outfile or die "Could not create new file: $!"; 
-open my $e6installer_asm , '<', 'e6installer.asm' or die "Could not open e6installer.asm: $!";
-say $e6installer_out "$e6installer_start_str:";
-while(<$e6installer_asm>) {
-    print $e6installer_out $_;
+sub preview {
+    my $src = shift;
+    my $dest = get_random_string;
+    `nasm -f bin -o $dest $src`;
+    say "$src => ", -s $dest, " bytes";
+    unlink $dest or warn "Could not delete temporary file: $!\n";
 }
 
-say $e6installer_out "times 32768 - (\$ - $e6installer_start_str) db 0";
-`nasm -f bin -o e6installer.bin $e6installer_outfile`;
+sub assemble_with_padding {
+    my $src = shift;
+    my $dest = shift;
+    my $padding = shift;
+    my $rand = get_random_string;
+    my $start_rand = "start_$rand";
+    my $tmpfile = "tmp_$rand.asm";
 
-assemble $e6installer_outfile, 'e6installer.bin';
+    open my $tmpout, '>>', $tmpfile or die "Could not create temporary file: $!\n";
+    open my $asm, '<', $src or die "Could not open $src: $!\n";
+    say $tmpout "$start_rand:";
+    while(<$asm>) {
+        print $tmpout $_;
+    }
+    say $tmpout "times $padding - (\$ - $start_rand) db 0";
+    `nasm -f bin -o $dest $tmpfile`;
+    unlink $tmpfile or warn "Could not delete temporary file: $!\n";
+}
+
+sub init {
+    my $src;
+    my $dest;
+    my $padding = 0;                # Don't pad by default
+    GetOptions(
+        'src=s' => \$src,
+        'dest=s' => \$dest,
+        'padding=i' => \$padding,
+    ) or die "Error in command line arguments\n";
+    
+    # unless ($src && $dest) {
+    #     die "Usage: $0 --src <source file> --dest <destination file> [--padding <padding size>]\n";
+    # }
+
+    my $subcommand = shift @ARGV;
+    if($subcommand eq 'preview') {
+        if($src && $dest) {
+            warn "Warning: too many options provided - preview only requires the --src option.\n" 
+        }
+        preview $src;
+    }
+    elsif($subcommand eq 'assemble') {
+        if($padding)    { assemble_with_padding $src, $dest, $padding; }
+        else            { assemble $src, $dest }
+    }
+
+}
+
+init;
