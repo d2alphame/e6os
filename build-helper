@@ -1,6 +1,41 @@
 #! /usr/bin/env perl
 
-
-use v5.36.0;
+use v5.34.0;
 use strict;
 use warnings;
+
+sub get_random_string {
+    my $length = shift || 16;
+    my $str = '';
+
+    my @chars = ('a'..'z', 'A'..'Z', '0'..'9');
+    $str .= $chars[rand @chars] for 1..$length;
+    return $str;
+}
+
+sub assemble {
+    my $src = shift;
+    my $dest = shift;
+    `nasm -f bin -o $dest $src`;
+    my $size = -s $dest;
+    say $size;
+}
+
+
+# assemble 'e6installer.asm', 'e6installer.bin';
+
+my $e6installer_random = get_random_string;
+my $e6installer_start_str = "start_$e6installer_random";
+my $e6installer_outfile = "e6installer_$e6installer_random.asm";
+
+open my $e6installer_out, '>>', $e6installer_outfile or die "Could not create new file: $!"; 
+open my $e6installer_asm , '<', 'e6installer.asm' or die "Could not open e6installer.asm: $!";
+say $e6installer_out "$e6installer_start_str:";
+while(<$e6installer_asm>) {
+    print $e6installer_out $_;
+}
+
+say $e6installer_out "times 32768 - (\$ - $e6installer_start_str) db 0";
+`nasm -f bin -o e6installer.bin $e6installer_outfile`;
+
+assemble $e6installer_outfile, 'e6installer.bin';

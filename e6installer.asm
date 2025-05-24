@@ -119,5 +119,5 @@ EAX_HEX:
 
 HEX_DIGITS: db "0123456789ABCDEF", 0x00
 
-times 32768-($-START) db 0
+;times 32768-($-START) db 0
 
