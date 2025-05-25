@@ -58,10 +58,6 @@ sub init {
         'padding=i' => \$padding,
     ) or die "Error in command line arguments\n";
     
-    # unless ($src && $dest) {
-    #     die "Usage: $0 --src <source file> --dest <destination file> [--padding <padding size>]\n";
-    # }
-
     my $subcommand = shift @ARGV;
     if($subcommand eq 'preview') {
         if($src && $dest) {
@@ -73,7 +69,6 @@ sub init {
         if($padding)    { assemble_with_padding $src, $dest, $padding; }
         else            { assemble $src, $dest }
     }
-
 }
 
 init;

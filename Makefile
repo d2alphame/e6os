@@ -22,11 +22,13 @@ INSTALLER_TEMP_DIR = $(TEMP_BUILD_DIR)/installer
 INSTALLER_TEMP_FILE = $(INSTALLER_TEMP_DIR)/e6installer.asm
 
 # This target builds the e6 installer iso image
-iso: e6iso.asm 
+iso: e6iso.asm e6installer.bin e6constants.asm
 	nasm -f bin -o e6.iso e6iso.asm
 
-# This target builds the e6 installer
-installer: e6installer.asm
-	mkdir -p /tmp/e6-build
-	nasm -f bin -o e6installer.bin e6installer.asm
+# This target builds the binary of the e6 installer
+e6installer.bin: e6installer.asm e6constants.asm
+	./build-helper assemble --src e6installer.asm --dest e6installer.bin --padding $(INSTALLER_PADDING_UP)
 
+# This targets previews the e6 installer binary
+preview-installer: e6installer.bin e6constants.asm
+	@./build-helper preview --src e6installer.asm
