@@ -19,7 +19,6 @@ Bits 64
 DEFAULT REL
 
 START:
-PE:
 HEADER_START:
 STANDARD_HEADER:
 
@@ -34,7 +33,7 @@ STANDARD_HEADER:
     .CREATED_DATE_TIME:          dd 1748399067                                                       ; Number of seconds since 1970 since when the file was created
     .SYMBOL_TABLE_POINTER:       dd 0x00                                                             ; Pointer to the symbol table. There should be no symbol table in an image so this is 0
     .NUMBER_OF_SYMBOLS:          dd 0x00                                                             ; Because there are no symbol tables in an image
-    .OPTIONAL_HEADER_SIZE:       dw OPTIONAL_HEADER_END  - OPTIONAL_HEADER_START                     ; Size of the optional header
+    .OPTIONAL_HEADER_SIZE:       dw OPTIONAL_HEADER_END - OPTIONAL_HEADER_START                      ; Size of the optional header
     .CHARACTERISTICS:            dw 0b0010111000100010                                               ; These are the attributes of the file
 
 OPTIONAL_HEADER_START:
