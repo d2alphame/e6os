@@ -22,48 +22,51 @@ START:
 PE:
 HEADER_START:
 STANDARD_HEADER:
-    ; This first 60 bytes would normally be the MSDOS header and DOS Stub. However, e6 would like to use these bytes for itself.
 
-    .SIGNATURE_POINTER          dd .PE_SIGNATURE - START                                            ; Pointer to the PE Signature
-    .PE_SIGNATURE               db 'PE', 0x00, 0x00                                                 ; This is the pe signature. The characters 'PE' followed by 2 null bytes
-    .MACHINE_TYPE               dw 0x8664                                                           ; Targetting the x64 machine
-    .NUMBER_OF_SECTIONS         dw 3                                                                ; Number of sections. Indicates size of section table that immediately follows the headers
-    .CREATED_DATE_TIME          dd 1657582794                                                       ; Number of seconds since 1970 since when the file was created
-    .SYMBOL_TABLE_POINTER       dd 0x00                                                             ; Pointer to the symbol table. There should be no symbol table in an image so this is 0
-    .NUMBER_OF_SYMBOLS          dd 0x00                                                             ; Because there are no symbol tables in an image
-    .OPTIONAL_HEADER_SIZE       dw OPTIONAL_HEADER_STOP - OPTIONAL_HEADER_START                     ; Size of the optional header
-    .CHARACTERISTICS            dw 0b0010111000100010                                               ; These are the attributes of the file
+    ; This first 60 bytes would normally be the MSDOS header and DOS Stub. However, e6 would like to use these bytes for itself.
+    
+    times 60 - ($ - START) db 0                                 ; Pad up to 60 bytes. This is useful so NASM can squeal if we go past 60 bytes
+
+    .SIGNATURE_POINTER:          dd .PE_SIGNATURE - START                                            ; Pointer to the PE Signature
+    .PE_SIGNATURE:               db 'PE', 0x00, 0x00                                                 ; This is the pe signature. The characters 'PE' followed by 2 null bytes
+    .MACHINE_TYPE:               dw 0x8664                                                           ; Targetting the x64 machine
+    .NUMBER_OF_SECTIONS:         dw 3                                                                ; Number of sections. Indicates size of section table that immediately follows the headers
+    .CREATED_DATE_TIME:          dd 1657582794                                                       ; Number of seconds since 1970 since when the file was created
+    .SYMBOL_TABLE_POINTER:       dd 0x00                                                             ; Pointer to the symbol table. There should be no symbol table in an image so this is 0
+    .NUMBER_OF_SYMBOLS:          dd 0x00                                                             ; Because there are no symbol tables in an image
+    .OPTIONAL_HEADER_SIZE:       dw OPTIONAL_HEADER_STOP - OPTIONAL_HEADER_START                     ; Size of the optional header
+    .CHARACTERISTICS:            dw 0b0010111000100010                                               ; These are the attributes of the file
 
 OPTIONAL_HEADER_START:
-    .MAGIC_NUMBER               dw 0x020B                       ; PE32+ (i.e. pe64) magic number
-    .MAJOR_LINKER_VERSION       db 0                            ; I'm sure this isn't needed. So set to 0
-    .MINOR_LINKER_VERSION       db 0                            ; This too
-    .SIZE_OF_CODE               dd CODE_END - CODE              ; The size of the code section
-    .INITIALIZED_DATA_SIZE      dd DATA_END - DATA              ; Size of initialized data section
-    .UNINITIALIZED_DATA_SIZE    dd 0x00                         ; Size of uninitialized data section
-    .ENTRY_POINT_ADDRESS        dd EntryPoint - START           ; Address of entry point relative to image base when the image is loaded in memory
-    .BASE_OF_CODE_ADDRESS       dd CODE - START                 ; Relative address of base of code
-    .IMAGE_BASE                 dq 0x400000                     ; Where in memory we would prefer the image to be loaded at
-    .SECTION_ALIGNMENT          dd 0x1000                       ; Alignment in bytes of sections when they are loaded in memory. Align to page boundry (4kb)
-    .FILE_ALIGNMENT             dd 0x1000                       ; Alignment of sections in the file. Also align to 4kb
-    .MAJOR_OS_VERSION           dw 0x00                         ; I'm not sure UEFI requires these and the following 'version woo'
-    .MINOR_OS_VERSION           dw 0x00                         ; More of these version thingies are to follow. Again, not sure UEFI needs them
-    .MAJOR_IMAGE_VERSION        dw 0x00                         ; Major version of the image
-    .MINOR_IMAGE_VERSION        dw 0x00                         ; Minor version of the image
-    .MAJOR_SUBSYSTEM_VERSION    dw 0x00                         ; 
-    .MINOR_SUBSYSTEM_VERSION    dw 0x00                         ;
-    .WIN32_VERSION_VALUE        dd 0x00                         ; Reserved, must be 0
-    .IMAGE_SIZE                 dd END - START                  ; The size in bytes of the image when loaded in memory including all headers
-    .HEADERS_SIZE               dd HEADER_END - HEADER_START    ; Size of all the headers
-    .CHECKSUM                   dd 0x00                         ; Hoping this doesn't break the application
-    .SUBSYSTEM                  dw 10                           ; The subsystem. In this case we're making a UEFI application.
-    .DLL_CHARACTERISTICS        dw 0b000011110010000            ; I honestly don't know what to put here
-    .STACK_RESERVE_SIZE         dq 0x200000                     ; Reserve 2MB for the stack... I guess...
-    .STACK_COMMIT_SIZE          dq 0x1000                       ; Commit 4kb of the stack
-    .HEAP_RESERVE_SIZE          dq 0x200000                     ; Reserve 2MB for the heap... I think... :D
-    .HEAP_COMMIT_SIZE           dq 0x1000                       ; Commit 4kb of heap
-    .LOADER_FLAGS               dd 0x00                         ; Reserved, must be zero
-    .NUMBER_OF_RVA_AND_SIZES    dd 0x10                         ; Number of entries in the data directory
+    .MAGIC_NUMBER:               dw 0x020B                       ; PE32+ (i.e. pe64) magic number
+    .MAJOR_LINKER_VERSION:       db 0                            ; I'm sure this isn't needed. So set to 0
+    .MINOR_LINKER_VERSION:       db 0                            ; This too
+    .SIZE_OF_CODE:               dd CODE_END - CODE              ; The size of the code section
+    .INITIALIZED_DATA_SIZE:      dd DATA_END - DATA              ; Size of initialized data section
+    .UNINITIALIZED_DATA_SIZE:    dd 0x00                         ; Size of uninitialized data section
+    .ENTRY_POINT_ADDRESS:        dd EntryPoint - START           ; Address of entry point relative to image base when the image is loaded in memory
+    .BASE_OF_CODE_ADDRESS:       dd CODE - START                 ; Relative address of base of code
+    .IMAGE_BASE:                 dq 0x400000                     ; Where in memory we would prefer the image to be loaded at
+    .SECTION_ALIGNMENT:          dd 0x1000                       ; Alignment in bytes of sections when they are loaded in memory. Align to page boundry (4kb)
+    .FILE_ALIGNMENT:             dd 0x1000                       ; Alignment of sections in the file. Also align to 4kb
+    .MAJOR_OS_VERSION:           dw 0x00                         ; I'm not sure UEFI requires these and the following 'version woo'
+    .MINOR_OS_VERSION:           dw 0x00                         ; More of these version thingies are to follow. Again, not sure UEFI needs them
+    .MAJOR_IMAGE_VERSION:        dw 0x00                         ; Major version of the image
+    .MINOR_IMAGE_VERSION:        dw 0x00                         ; Minor version of the image
+    .MAJOR_SUBSYSTEM_VERSION:    dw 0x00                         ; 
+    .MINOR_SUBSYSTEM_VERSION:    dw 0x00                         ;
+    .WIN32_VERSION_VALUE:        dd 0x00                         ; Reserved, must be 0
+    .IMAGE_SIZE:                 dd END - START                  ; The size in bytes of the image when loaded in memory including all headers
+    .HEADERS_SIZE:               dd HEADER_END - HEADER_START    ; Size of all the headers
+    .CHECKSUM:                   dd 0x00                         ; Hoping this doesn't break the application
+    .SUBSYSTEM:                  dw 10                           ; The subsystem. In this case we're making a UEFI application.
+    .DLL_CHARACTERISTICS:        dw 0b000011110010000            ; I honestly don't know what to put here
+    .STACK_RESERVE_SIZE:         dq 0x200000                     ; Reserve 2MB for the stack... I guess...
+    .STACK_COMMIT_SIZE:          dq 0x1000                       ; Commit 4kb of the stack
+    .HEAP_RESERVE_SIZE:          dq 0x200000                     ; Reserve 2MB for the heap... I think... :D
+    .HEAP_COMMIT_SIZE:           dq 0x1000                       ; Commit 4kb of heap
+    .LOADER_FLAGS:               dd 0x00                         ; Reserved, must be zero
+    .NUMBER_OF_RVA_AND_SIZES:    dd 0x10                         ; Number of entries in the data directory
 
     DATA_DIRECTORIES:
         EDATA:
