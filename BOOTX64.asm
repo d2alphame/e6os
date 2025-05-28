@@ -21,7 +21,7 @@ DEFAULT REL
 START:
 HEADER_START:
 STANDARD_HEADER:
-
+    db "MZ"
     ; This first 60 bytes would normally be the MSDOS header and DOS Stub. However, e6 would like to use these bytes for itself.
     
     times 60 - ($ - START) db 0                                 ; Pad up to 60 bytes. This is useful so NASM can squeal if we go past 60 bytes
