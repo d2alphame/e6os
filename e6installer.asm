@@ -24,7 +24,6 @@
 %include "e6constants.asm"
 
 START:
-
 cli                                               ; Clear interrupts
 
 ; Setup a stack we can work with. With the following setup, we keep our fingers
@@ -108,6 +107,9 @@ clear_screen:
 wait_for_key:
   ; Waits for a given key to be pressed
 
+
+BOOT_DEVICE: db 0x00                            ; The device number of the boot device
+
 STARTUP_MSG:  
   db "E6OS INSTALLATION CD", 0x0A, 0x0D, 0x0A, 0x0D
   db "If you're seeing this, it means your system boots from BIOS.", 0x0A, 0x0D
@@ -118,6 +120,4 @@ EAX_HEX:
   .hexstring: dq 0x00
 
 HEX_DIGITS: db "0123456789ABCDEF", 0x00
-
-;times 32768-($-START) db 0
 
