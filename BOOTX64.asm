@@ -80,21 +80,20 @@ SECTION_HEADERS:
         .pointer_to_line_numbers    dd 0                                    ; There are no COFF line numbers
         .number_of_relocations      dw 0                                    ; Set to 0 for executable images
         .number_of_line_numbers     dw 0                                    ; Should be 0 for images
-        .characteristics            dd 0x70000020                           ; Need to read up more on this
-
-times 4096-($-PE)   db 0
-HEADER_END:
-
+        .characteristics            dd 0x70000060                           ; Need to read up more on this
 
 CODE:
 EntryPoint:
+    xor rax, rax
+    ret
 
 
-; Data begins here. Unused for now
 DATA:
     EFI_IMAGE_HANDLE    dq 0x00                                     ; EFI will give us this in rcx
     EFI_SYSTEM_TABLE    dq 0x00                                     ; And this in rdx
     hello_message db __utf16__ `Hello_world\0`                      ; EFI strings are UTF16 and null-terminated
 
+
 align 4096
+HEADER_END:
 END:
