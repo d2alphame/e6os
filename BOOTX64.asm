@@ -30,23 +30,23 @@ STANDARD_HEADER:
     .SIGNATURE_POINTER:          dd .PE_SIGNATURE - START                                            ; Pointer to the PE Signature
     .PE_SIGNATURE:               db 'PE', 0x00, 0x00                                                 ; This is the pe signature. The characters 'PE' followed by 2 null bytes
     .MACHINE_TYPE:               dw 0x8664                                                           ; Targetting the x64 machine
-    .NUMBER_OF_SECTIONS:         dw 3                                                                ; Number of sections. Indicates size of section table that immediately follows the headers
-    .CREATED_DATE_TIME:          dd 1657582794                                                       ; Number of seconds since 1970 since when the file was created
+    .NUMBER_OF_SECTIONS:         dw 1                                                                ; Number of sections. Indicates size of section table that immediately follows the headers
+    .CREATED_DATE_TIME:          dd 1748399067                                                       ; Number of seconds since 1970 since when the file was created
     .SYMBOL_TABLE_POINTER:       dd 0x00                                                             ; Pointer to the symbol table. There should be no symbol table in an image so this is 0
     .NUMBER_OF_SYMBOLS:          dd 0x00                                                             ; Because there are no symbol tables in an image
-    .OPTIONAL_HEADER_SIZE:       dw OPTIONAL_HEADER_STOP - OPTIONAL_HEADER_START                     ; Size of the optional header
+    .OPTIONAL_HEADER_SIZE:       dw OPTIONAL_HEADER_END  - OPTIONAL_HEADER_START                     ; Size of the optional header
     .CHARACTERISTICS:            dw 0b0010111000100010                                               ; These are the attributes of the file
 
 OPTIONAL_HEADER_START:
     .MAGIC_NUMBER:               dw 0x020B                       ; PE32+ (i.e. pe64) magic number
     .MAJOR_LINKER_VERSION:       db 0                            ; I'm sure this isn't needed. So set to 0
     .MINOR_LINKER_VERSION:       db 0                            ; This too
-    .SIZE_OF_CODE:               dd CODE_END - CODE              ; The size of the code section
-    .INITIALIZED_DATA_SIZE:      dd DATA_END - DATA              ; Size of initialized data section
+    .SIZE_OF_CODE:               dd END - START                  ; The size of the code section
+    .INITIALIZED_DATA_SIZE:      dd END - START                  ; Size of initialized data section
     .UNINITIALIZED_DATA_SIZE:    dd 0x00                         ; Size of uninitialized data section
     .ENTRY_POINT_ADDRESS:        dd EntryPoint - START           ; Address of entry point relative to image base when the image is loaded in memory
-    .BASE_OF_CODE_ADDRESS:       dd CODE - START                 ; Relative address of base of code
-    .IMAGE_BASE:                 dq 0x400000                     ; Where in memory we would prefer the image to be loaded at
+    .BASE_OF_CODE_ADDRESS:       dd START                        ; Relative address of base of code
+    .IMAGE_BASE:                 dq 0x10000                      ; Where in memory we would prefer the image to be loaded at
     .SECTION_ALIGNMENT:          dd 0x1000                       ; Alignment in bytes of sections when they are loaded in memory. Align to page boundry (4kb)
     .FILE_ALIGNMENT:             dd 0x1000                       ; Alignment of sections in the file. Also align to 4kb
     .MAJOR_OS_VERSION:           dw 0x00                         ; I'm not sure UEFI requires these and the following 'version woo'
@@ -66,112 +66,29 @@ OPTIONAL_HEADER_START:
     .HEAP_RESERVE_SIZE:          dq 0x200000                     ; Reserve 2MB for the heap... I think... :D
     .HEAP_COMMIT_SIZE:           dq 0x1000                       ; Commit 4kb of heap
     .LOADER_FLAGS:               dd 0x00                         ; Reserved, must be zero
-    .NUMBER_OF_RVA_AND_SIZES:    dd 0x10                         ; Number of entries in the data directory
+    .NUMBER_OF_RVA_AND_SIZES:    dd 0x00                         ; Number of entries in the data directory
 
-    DATA_DIRECTORIES:
-        EDATA:
-            .address            dd 0                                        ; Address of export table
-            .size               dd 0                                        ; Size of export table
-        IDATA:
-            .address            dd 0                                        ; Address of import table
-            .size               dd 0                                        ; Size of import table
-        RSRC:
-            .address            dd 0                                        ; Address of resource table
-            .size               dd 0                                        ; Size of resource table
-        PDATA:
-            .address            dd 0                                        ; Address of exception table
-            .size               dd 0                                        ; Size of exception table
-        CERT:
-            .address            dd 0                                        ; Address of certificate table
-            .size               dd 0                                        ; Size of certificate table
-        RELOC:
-            .address            dd END - START                              ; Address of relocation table
-            .size               dd 0                                        ; Size of relocation table
-        DEBUG:
-            .address            dd 0                                        ; Address of debug table
-            .size               dd 0                                        ; Size of debug table
-        ARCHITECTURE:
-            .address            dd 0                                        ; Reserved. Must be 0
-            .size               dd 0                                        ; Reserved. Must be 0
-        GLOBALPTR:
-            .address            dd 0                                        ; RVA to be stored in global pointer register
-            .size               dd 0                                        ; Must be 0
-        TLS:
-            .address            dd 0                                        ; Address of TLS table
-            .size               dd 0                                        ; Size of TLS table
-        LOADCONFIG:
-            .address            dd 0                                        ; Address of Load Config table
-            .size               dd 0                                        ; Size of Load Config table
-        BOUNDIMPORT:
-            .address            dd 0                                        ; Address of bound import table
-            .size               dd 0                                        ; Size of bound import table
-        IAT:
-            .address            dd 0                                        ; Address of IAT
-            .size               dd 0                                        ; Size of IAT
-        DELAYIMPORTDESCRIPTOR:
-            .address            dd 0                                        ; Address of delay import descriptor
-            .size               dd 0                                        ; Size of delay import descriptor
-        CLRRUNTIMEHEADER:
-            .address            dd 0                                        ; Address of CLR runtime header
-            .size               dd 0                                        ; Size of CLR runtime header
-        RESERVED:
-            .address            dd 0                                        ; Reserved, must be 0
-            .size               dd 0                                        ; Reserved, must be 0
-
-OPTIONAL_HEADER_STOP:
-; HEADER_END:
-
+OPTIONAL_HEADER_END:
 
 SECTION_HEADERS:
-    SECTION_CODE:
-        .name                       db ".text", 0x00, 0x00, 0x00
-        .virtual_size               dd CODE_END - CODE
-        .virtual_address            dd CODE - START
-        .size_of_raw_data           dd CODE_END - CODE
-        .pointer_to_raw_data        dd CODE - START
+    SECTION_ALL:
+        .name                       db ".all", 0x00, 0x00, 0x00, 0x00
+        .virtual_size               dd END - START
+        .virtual_address            dd START
+        .size_of_raw_data           dd END - START
+        .pointer_to_raw_data        dd START
         .pointer_to_relocations     dd 0                                    ; Set to 0 for executable images
         .pointer_to_line_numbers    dd 0                                    ; There are no COFF line numbers
         .number_of_relocations      dw 0                                    ; Set to 0 for executable images
         .number_of_line_numbers     dw 0                                    ; Should be 0 for images
         .characteristics            dd 0x70000020                           ; Need to read up more on this
 
-    SECTION_DATA:
-        .name                       db ".data", 0x00, 0x00, 0x00
-        .virtual_size               dd DATA_END - DATA
-        .virtual_address            dd DATA - START
-        .size_of_raw_data           dd DATA_END - DATA
-        .pointer_to_raw_data        dd DATA - START
-        .pointer_to_relocations     dd 0
-        .pointer_to_line_numbers    dd 0
-        .number_of_relocations      dw 0
-        .number_of_line_numbers     dw 0
-        .characteristics            dd 0xD0000040
-
-    SECTION_RELOC:
-        .name                       db ".reloc", 0x00, 0x00
-        .virtual_size               dd 0
-        .virtual_address            dd END - START
-        .size_of_raw_data           dd 0
-        .pointer_to_raw_data        dd END - START
-        .pointer_to_relocations     dd 0
-        .pointer_to_line_numbers    dd 0
-        .number_of_relocations      dw 0
-        .number_of_line_numbers     dw 0
-        .characteristics            dd 0xC2000040
-
 times 4096-($-PE)   db 0
 HEADER_END:
 
 
 CODE:
-    ; The code begins here with the entry point
-    EntryPoint:
-
-        mov rax, 0x00
-        ret
-
-align 4096
-CODE_END:
+EntryPoint:
 
 
 ; Data begins here. Unused for now
@@ -180,6 +97,5 @@ DATA:
     EFI_SYSTEM_TABLE    dq 0x00                                     ; And this in rdx
     hello_message db __utf16__ `Hello_world\0`                      ; EFI strings are UTF16 and null-terminated
 
-    align 4096
-DATA_END:
+align 4096
 END:
