@@ -86,12 +86,17 @@ CODE:
 EntryPoint:
     mov [EFI_IMAGE_HANDLE], rcx
     mov [EFI_SYSTEM_TABLE], rdx
+
+    ; Point to the EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL
     add rdx, EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL
-    mov rcx, [rdx]
     mov rdx, [rdx]
+
+    mov rcx, rdx
+
     add rdx, EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_OutputString
-    mov rax, rdx
+    mov rax, [rdx]
     lea rdx, [hello_message]
+
     sub rsp, 40
     call rax
 
