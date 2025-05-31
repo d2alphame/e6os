@@ -84,14 +84,26 @@ SECTION_HEADERS:
 
 CODE:
 EntryPoint:
+    mov [EFI_IMAGE_HANDLE], rcx
+    mov [EFI_SYSTEM_TABLE], rdx
+    add rdx, EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL
+    mov rcx, [rdx]
+
+
+
     xor rax, rax
     ret
 
 
+align 16
 DATA:
-    EFI_IMAGE_HANDLE    dq 0x00                                     ; EFI will give us this in rcx
-    EFI_SYSTEM_TABLE    dq 0x00                                     ; And this in rdx
-    hello_message db __utf16__ `Hello_world\0`                      ; EFI strings are UTF16 and null-terminated
+    EFI_IMAGE_HANDLE    dq 0x00                                             ; EFI will give us this in rcx
+    EFI_SYSTEM_TABLE    dq 0x00                                             ; And this in rdx
+    
+    EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL                 equ 64
+    EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_OutputString    equ 8
+    
+    hello_message db __utf16__ `Hello_world\0`                              ; EFI strings are UTF16 and null-terminated
 
 
 align 4096
