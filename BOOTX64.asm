@@ -21,12 +21,8 @@ DEFAULT REL
 START:
 HEADER_START:
 STANDARD_HEADER:
-    db "MZ"
-    ; This first 60 bytes would normally be the MSDOS header and DOS Stub. However, e6 would like to use these bytes for itself.
-    
-    times 60 - ($ - START) db 0                                 ; Pad up to 60 bytes. This is useful so NASM can squeal if we go past 60 bytes
-
-    .SIGNATURE_POINTER:          dd .PE_SIGNATURE - START                                            ; Pointer to the PE Signature
+    .DOS_SIGNATURE:              db "MZ"                                                             ; DOS Signature. This is required
+    .DOS_ALIGNMENT:              dw 0x00                                                             ; This is just to make the PE below align on a 4-byte boundary
     .PE_SIGNATURE:               db 'PE', 0x00, 0x00                                                 ; This is the pe signature. The characters 'PE' followed by 2 null bytes
     .MACHINE_TYPE:               dw 0x8664                                                           ; Targetting the x64 machine
     .NUMBER_OF_SECTIONS:         dw 1                                                                ; Number of sections. Indicates size of section table that immediately follows the headers
@@ -46,7 +42,7 @@ OPTIONAL_HEADER_START:
     .ENTRY_POINT_ADDRESS:        dd EntryPoint - START           ; Address of entry point relative to image base when the image is loaded in memory
     .BASE_OF_CODE_ADDRESS:       dd START                        ; Relative address of base of code
     .IMAGE_BASE:                 dq 0x10000                      ; Where in memory we would prefer the image to be loaded at
-    .SECTION_ALIGNMENT:          dd 0x1000                       ; Alignment in bytes of sections when they are loaded in memory. Align to page boundry (4kb)
+    .SECTION_ALIGNMENT:          dd 0x0004                       ; Alignment in bytes of sections when they are loaded in memory. Align to page boundry (4kb)
     .FILE_ALIGNMENT:             dd 0x1000                       ; Alignment of sections in the file. Also align to 4kb
     .MAJOR_OS_VERSION:           dw 0x00                         ; I'm not sure UEFI requires these and the following 'version woo'
     .MINOR_OS_VERSION:           dw 0x00                         ; More of these version thingies are to follow. Again, not sure UEFI needs them
@@ -108,15 +104,15 @@ EntryPoint:
 
 align 16
 DATA:
-    EFI_IMAGE_HANDLE    dq 0x00                                             ; EFI will give us this in rcx
-    EFI_SYSTEM_TABLE    dq 0x00                                             ; And this in rdx
-    
-    hello_message db __utf16__ `Hello_world\0`                              ; EFI strings are UTF16 and null-terminated
+    EFI_IMAGE_HANDLE    dq 0x00                                            ; EFI will give us this in rcx
+    EFI_SYSTEM_TABLE    dq 0x00                                            ; And this in rdx
+    hello_message db __utf16__ `Hello World\r\n\0`                         ; EFI strings are UTF16 and null-terminated
 
 
 align 4096
 HEADER_END:
 END:
+
 
 EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL                 equ 64
 EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_OutputString    equ 8
