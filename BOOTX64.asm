@@ -108,10 +108,10 @@ EntryPoint:
 
 align 16
 DATA:
-    EFI_IMAGE_HANDLE    dq 0x00                                             ; EFI will give us this in rcx
-    EFI_SYSTEM_TABLE    dq 0x00                                             ; And this in rdx
+    EFI_IMAGE_HANDLE    dq 0x00                                              ; EFI will give us this in rcx
+    EFI_SYSTEM_TABLE    dq 0x00                                              ; And this in rdx
     
-    hello_message db __utf16__ `Hello_world\0`                              ; EFI strings are UTF16 and null-terminated
+    hello_message db __utf16__ `Hello World\r\n\0`                           ; EFI strings are UTF16 and null-terminated
 
 
 align 4096
