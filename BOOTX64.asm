@@ -95,7 +95,7 @@ EntryPoint:
     sub rsp, 40
     call rax
 
-
+    add rsp, 40
     xor rax, rax
     ret
 
