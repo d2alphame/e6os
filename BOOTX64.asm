@@ -102,6 +102,7 @@ EntryPoint:
 
     add rsp, 40
     xor rax, rax
+    jmp $
     ret
 
 
