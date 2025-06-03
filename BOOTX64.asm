@@ -44,13 +44,24 @@ OPTIONAL_HEADER_START:
     .IMAGE_BASE:                 dq 0x10000                      ; Where in memory we would prefer the image to be loaded at
     .SECTION_ALIGNMENT:          dd 0x0004                       ; Alignment in bytes of sections when they are loaded in memory. Align to page boundry (4kb)
     .FILE_ALIGNMENT:             dd 0x1000                       ; Alignment of sections in the file. Also align to 4kb
-    .MAJOR_OS_VERSION:           dw 0x00                         ; I'm not sure UEFI requires these and the following 'version woo'
-    .MINOR_OS_VERSION:           dw 0x00                         ; More of these version thingies are to follow. Again, not sure UEFI needs them
-    .MAJOR_IMAGE_VERSION:        dw 0x00                         ; Major version of the image
-    .MINOR_IMAGE_VERSION:        dw 0x00                         ; Minor version of the image
-    .MAJOR_SUBSYSTEM_VERSION:    dw 0x00                         ; 
-    .MINOR_SUBSYSTEM_VERSION:    dw 0x00                         ;
-    .WIN32_VERSION_VALUE:        dd 0x00                         ; Reserved, must be 0
+
+    ; What would normally follow should be MAJOR_OS_VERSION (2 bytes), MINOR_OS_VERSION (2 bytes), MAJOR_IMAGE_VERSION (2 bytes), MINOR_IMAGE_VERSION (2 bytes).
+    ; These make a total of 8 bytes. E6 would use that 8 bytes to store the EFI_IMAGE_HANDLE
+    .EFI_IMAGE_HANDLE:             dq 0x00                         ; This will be passed to us by EFI when e6 boots
+
+    ; .MAJOR_OS_VERSION:           dw 0x00                         ; I'm not sure UEFI requires these and the following 'version woo'
+    ; .MINOR_OS_VERSION:           dw 0x00                         ; More of these version thingies are to follow. Again, not sure UEFI needs them
+    ; .MAJOR_IMAGE_VERSION:        dw 0x00                         ; Major version of the image
+    ; .MINOR_IMAGE_VERSION:        dw 0x00                         ; Minor version of the image
+    
+    ; MAJOR_SUBSYSTEM_VERSION (2 bytes), MINOR_SUBSYSTEM_VERSION (2 bytes), and WIN32_VERSION_VALUE (4 bytes) would normally follow for a total of 8 bytes. E6 uses
+    ; this to store the pointer to the EFI_SYSTEM_TABLE that would be passed by EFI on boot.
+    .EFI_SYSTEM_TABLE:             dq 0x00                         ; Received from EFI on boot
+
+    ; .MAJOR_SUBSYSTEM_VERSION:    dw 0x00                         ; 
+    ; .MINOR_SUBSYSTEM_VERSION:    dw 0x00                         ;
+    ; .WIN32_VERSION_VALUE:        dd 0x00                         ; Reserved, must be 0
+    
     .IMAGE_SIZE:                 dd END - START                  ; The size in bytes of the image when loaded in memory including all headers
     .HEADERS_SIZE:               dd HEADER_END - HEADER_START    ; Size of all the headers
     .CHECKSUM:                   dd 0x00                         ; Hoping this doesn't break the application
@@ -80,8 +91,8 @@ SECTION_HEADERS:
 
 CODE:
 EntryPoint:
-    mov [EFI_IMAGE_HANDLE], rcx
-    mov [EFI_SYSTEM_TABLE], rdx
+    mov [OPTIONAL_HEADER_START.EFI_IMAGE_HANDLE], rcx
+    mov [OPTIONAL_HEADER_START.EFI_SYSTEM_TABLE], rdx
 
     ; Point to the EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL
     add rdx, EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL
@@ -104,12 +115,12 @@ EntryPoint:
 
 align 16
 DATA:
-    EFI_IMAGE_HANDLE    dq 0x00                                            ; EFI will give us this in rcx
-    EFI_SYSTEM_TABLE    dq 0x00                                            ; And this in rdx
+    ; EFI_IMAGE_HANDLE    dq 0x00                                            ; EFI will give us this in rcx
+    ; EFI_SYSTEM_TABLE    dq 0x00                                            ; And this in rdx
     hello_message db __utf16__ `Hello World\r\n\0`                         ; EFI strings are UTF16 and null-terminated
 
 
-align 4096
+4096 - ($ - START) db 0x00                      ; Pad up to 4kb
 HEADER_END:
 END:
 
