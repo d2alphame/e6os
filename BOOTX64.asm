@@ -120,7 +120,7 @@ DATA:
     hello_message db __utf16__ `Hello World\r\n\0`                         ; EFI strings are UTF16 and null-terminated
 
 
-4096 - ($ - START) db 0x00                      ; Pad up to 4kb
+times 4096 - ($ - START) db 0x00                      ; Pad up to 4kb
 HEADER_END:
 END:
 
