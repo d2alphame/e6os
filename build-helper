@@ -45,7 +45,7 @@ sub assemble_with_padding {
     }
     say $tmpout "\ntimes $padding - (\$ - $start_rand) db 0";
     `nasm -f bin -o $dest $tmpfile`;
-    #unlink $tmpfile or warn "Could not delete temporary file: $!\n";
+    unlink $tmpfile or warn "Could not delete temporary file: $!\n";
 }
 
 sub init {

@@ -244,4 +244,4 @@ HEX_DIGITS: db "0123456789ABCDEF", 0x00
 DUMP_LINE_BUFFER_HEX:
     .address: dd 0x00
     .values: times 6 dq 0x00
-    .newline: db 0x0A, 0x0D     ;;
+    .newline: db 0x0A, 0x0D
