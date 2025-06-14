@@ -46,7 +46,13 @@ sti                                               ; Set interrupts again
 mov si, STARTUP_MSG
 xor al, al
 call print_byte_terminated_string
+; jmp $
+
+mov si, START
+call dump_memory_hex
 jmp $
+
+
 
 ; A bunch of functions that will be useful
 ; ========================================
@@ -122,7 +128,7 @@ dump_memory_hex:
     cmp dx, 0x00
     je .continue
     stc                             ; Set the carry flag to mean an error occured
-    retf
+    ret
 
     ; Start on a new line
     .continue:
@@ -134,8 +140,8 @@ dump_memory_hex:
         int 10h
 
     ; Print the headers
-    ; First print out intial 8 spaces in the header
-    mov cl, 0x04
+    ; First print out intial 4 spaces in the header
+    mov cx, 0x04
     mov ah, 0x0E
     mov al, ' '
     .print_initial_spaces:
