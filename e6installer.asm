@@ -28,8 +28,7 @@ cli                                               ; Clear interrupts
 
 mov [BOOT_DEVICE], dl                             ; Before doing anything, save the boot device
 
-; Setup a stack we can work with. With the following setup, we keep our fingers
-; crossed and hope we don't overwrite the IVT and the BDA :D
+; Setup a stack we can work with. This stack is setup somewhere below the loaded installer code
 xor ax, ax
 mov ss, ax
 mov sp, 0x8000
@@ -46,16 +45,38 @@ sti                                               ; Set interrupts again
 mov si, STARTUP_MSG
 xor al, al
 call print_byte_terminated_string
-; jmp $
 
-mov si, START
-call dump_memory_hex
+; Wait for the user to press the 'enter' key
+mov al, 0x1C
+call wait_for_key_scancode
+
+call clear_screen
+
+xor al, al
+mov si, STORAGE_DEVICE_SEARCH_MSG
+call print_byte_terminated_string
 jmp $
 
 
 
-; A bunch of functions that will be useful
-; ========================================
+; ********************************************
+; *                                          *
+; * A bunch of functions that will be useful *
+; *                                          *
+; ********************************************
+
+
+print_newline:
+  ; Moves the cursor to the beginning of the next line
+  ;---------------------------------------------------
+  mov ah, 0x0E
+  mov bx, 0x0007
+  mov al, 0x0A
+  int 10h
+  mov al, 0x0D
+  int 10h
+  ret
+
 
 
 print_byte_terminated_string:
@@ -77,6 +98,8 @@ print_byte_terminated_string:
   .done:
     pop dx
     ret
+
+
 
 print_eax_hex:
   ; Prints out the content of the eax register in hexadecimal
@@ -110,17 +133,49 @@ print_eax_hex:
 
 clear_screen:
   ; Clears the screen
+  ;---------------------
+  mov ah, 0x06                    ; Actually this the function to scroll the screen
+  xor al, al                      ; Make AL = 0 to clear the screen
+  mov bh, 0x07                    ; Background and Foreground colors. Background is black and foreground is white
+  xor ch, ch                      ; CH = 0: start from the first row
+  xor cl, cl                      ; CL = 0: start from the first column
+  mov dh, 24                      ; Last row in 80x25 text mode
+  mov dl, 79                      ; Last column in 80x25 text mode
+  int 10h
+
+  ; Reposition the cursor at the beginning of the screen
+  mov ah, 0x02                    ; Function to position cursor
+  xor bh, bh                      ; Page number 0
+  xor dh, dh                      ; DH = 0: First row
+  xor dl, dl                      ; DL = 0: First column
+  int 10h
+  ret
+
  
 
-wait_for_key:
-  ; Waits for a given key to be pressed
+wait_for_key_scancode:
+  ; Waits for a key to be pressed which has a given scancode
+  ; IN:
+  ;    AL: Scancode of the key to wait for
+  ; OUT:
+  ;    AH: Scancode of the key
+  ;    AL: ASCII of the key. This would be 0 if there's no ASCII
+  ;-----------------------------------------------------------------
+    mov dl, al
+    .loop:
+      mov ah, 0x00                    ; BIOS function to get key
+      int 16h                         ; Keyboard interrupt
+      cmp ah, dl                      ; Check if it's the key we're waiting for
+      jnz .loop                       ; Continue waiting if it's not
+    ret
 
 
-; Dump content of memory in hexadecimal. Dumps 256 bytes of memory
-; IN
-;   SI: Memory address to dump.
-; NOTE: The address is expected to be 256-byte aligned
 dump_memory_hex:
+  ; Dump content of memory in hexadecimal. Dumps 256 bytes of memory
+  ; IN
+  ;   SI: Memory address to dump.
+  ; NOTE: The address is expected to be 256-byte aligned
+  ;-----------------------------------------------------------------
 
     ; Check to ensure the address is 256 byte aligned
     mov dx, si
@@ -234,6 +289,8 @@ dump_memory_hex:
         ret
 
 
+
+
 BOOT_DEVICE: db 0x00                            ; The device number of the boot device
 
 STARTUP_MSG:  
@@ -251,3 +308,6 @@ DUMP_LINE_BUFFER_HEX:
     .address: dd 0x00
     .values: times 6 dq 0x00
     .newline: db 0x0A, 0x0D
+
+STORAGE_DEVICE_SEARCH_MSG:
+  db "Searching for storage devices...", 0x00
