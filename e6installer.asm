@@ -55,6 +55,9 @@ call clear_screen
 xor al, al
 mov si, STORAGE_DEVICE_SEARCH_MSG
 call print_byte_terminated_string
+
+; Enumerate storage devices
+
 jmp $
 
 
@@ -310,4 +313,11 @@ DUMP_LINE_BUFFER_HEX:
     .newline: db 0x0A, 0x0D
 
 STORAGE_DEVICE_SEARCH_MSG:
-  db "Searching for storage devices...", 0x00
+  db "Searching for storage devices...", 0x0A, 0x0D, 0x0A, 0x0D, 0x00
+
+DETECTED_DEVICES_MSG:
+  db "The following storage devices were detected", 0x0A, 0x0D, 0x00
+
+DETECTED_STORAGE_DEVICES:
+  .count: db 0                        ; Number of storage devices found
+  .storage_devices dq 0x00, 0x00      ; Store detected disks here 0x80 to 0x8F
