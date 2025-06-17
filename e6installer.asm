@@ -57,6 +57,11 @@ mov si, STORAGE_DEVICE_SEARCH_MSG
 call print_byte_terminated_string
 
 ; Enumerate storage devices
+mov ah, 0x48
+mov dl, 0x80
+mov si, DRIVE_INFORMATION_BUFFER
+
+
 
 jmp $
 
@@ -101,6 +106,22 @@ print_byte_terminated_string:
   .done:
     pop dx
     ret
+
+
+
+print_string_ecx_length:
+  ; Prints a string whose length is specified in ecx
+  ; IN:
+  ;   DS:SI - Location of the string to print
+  ;   ECX   - Length of the string to print
+  ;--------------------------------------------------
+  mov ah, 0x0E
+  mov bx, 0x0007
+  .loop:
+    lodsb
+    int 10h
+    loop .loop
+  ret
 
 
 
@@ -321,3 +342,25 @@ DETECTED_DEVICES_MSG:
 DETECTED_STORAGE_DEVICES:
   .count: db 0                        ; Number of storage devices found
   .storage_devices dq 0x00, 0x00      ; Store detected disks here 0x80 to 0x8F
+
+DRIVE_INFORMATION_BUFFER:
+  .buffer_size: dw DRIVE_INFORMATION_BUFFER.end_buffer - DRIVE_INFORMATION_BUFFER
+  .information_flags: dw 0x00
+  .cylinders: dd 0x00
+  .heads: dd 0x00
+  .sectors_per_track: dd 0x00
+  .sector_count: dq 0x00
+  .bytes_per_sector: dw 0x00
+  .dpte_pointer: dd 0x00
+  .device_path_info_presence: dw 0x00
+  .device_path_info_length: db 0x00
+  .reserved_1: db 0x00
+  .reserved_2: dw 0x00
+  .bus_type_ascii: dd 0x00
+  .interface_type_ascii: dq 0x00
+  .interface_path: dq 0x00
+  .device_path: dq 0x00
+  .reserved_3: db 0x00
+  .checksum: db 0x00
+  .end_buffer: 
+
