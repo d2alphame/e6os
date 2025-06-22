@@ -26,9 +26,11 @@ sub preview {
     my $dest = get_random_string;
     `nasm -f bin -o $dest $src`;
     # Do this because the above 'nasm' command might have failed
-    if(-e $dest) { say "$src => ", -s $dest, " bytes" };
-    else { "An error occurred while assembling $src" }
-    unlink $dest or warn "Could not delete temporary file: $!\n";
+    if(-e $dest) { 
+        say "$src => ", -s $dest, " bytes"; 
+        unlink $dest or warn "Could not delete temporary file: $!\n";
+    }
+    else { say "An error occurred while assembling $src" }
 }
 
 sub assemble_with_padding {
