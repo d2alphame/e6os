@@ -50,24 +50,57 @@ mov al, 0x1C                                      ; scancode of the key to wait 
 call wait_for_key_scancode
 call print_newline
 call print_newline
-
+xor al, al
 mov si, SELECT_STORAGE_DEVICE_MSG
 call print_byte_terminated_string
 
 ; Wait for the user to press a key to select fixed disk or removable disk
-int 16h
-jmp $
+; int 16h
+; jmp $
 
 
 ; Enumerate storage devices. Here look for 15 removable disks and 15 fixed disks
+enumerate_storage_devices:
+  xor edx, edx
+  mov si, DRIVE_INFORMATION_BUFFER
+  .loop:
+    mov word [DRIVE_INFORMATION_BUFFER.buffer_size], DRIVE_INFORMATION_BUFFER_SIZE
+    mov ah, 0x48          ; Function to get drive parameters
+    int 13h
+    jc .pre_loop             ; Carry flag is set on error
+    
+    ; Check the 'removable-media' flag in the result
+    xor eax, eax
+    mov ax, [DRIVE_INFORMATION_BUFFER.information_flags]
+    test ax, 0x04
+    jnz .removable_media_found
+  .fixed_disk_found:
+    xor eax, eax
+    mov al, [DETECTED_STORAGE_DEVICES.count]
+    shr ax, 4
+    add ax, DETECTED_STORAGE_DEVICES.fixed_disks
+    mov [ax], dl
+    add byte[DETECTED_STORAGE_DEVICES.count], 8
 
-; mov dl, 0xE0
-; mov ah, 0x41
-; mov bx, 0x55AA
-; int 13h
-; xor ax, ax
-; mov ax, cx
-; call print_eax_hex
+  .removable_media_found:
+  
+  .pre_loop:              ; An error occured
+    cmp dl, 0xFF          ; If we've exhausted all possible BIOS drive numbers
+    je .done              ; then we're done
+
+    ; If we've found 15 removable media AND 15 fixed disks then stop searching
+    cmp byte [DETECTED_STORAGE_DEVICES.count], 0xFF
+    je .done
+
+    inc dl                ; Otherwise try the next BIOS drive number
+    jmp .loop
+
+  .done:
+    
+
+  ; xor ax, ax
+  ; mov ax, cx
+  ; call print_eax_hex
 
 ; jmp $
 
@@ -86,6 +119,7 @@ jmp $
 ; call print_eax_hex
 
 jmp $
+
 
 
 
@@ -371,7 +405,8 @@ DETECTED_STORAGE_DEVICES:
   .fixed_disks: times 15 db 0       ; BIOS interrupt numbers for fixed disks 0x80 - 0xFF
 
 DRIVE_INFORMATION_BUFFER:
-  .buffer_size: dw DRIVE_INFORMATION_BUFFER.end_buffer - DRIVE_INFORMATION_BUFFER
+  ;.buffer_size: dw DRIVE_INFORMATION_BUFFER.end_buffer - DRIVE_INFORMATION_BUFFER
+  .buffer_size: dw DRIVE_INFORMATION_BUFFER_SIZE
   .information_flags: dw 0x00
   .cylinders: dd 0x00
   .heads: dd 0x00
@@ -391,3 +426,6 @@ DRIVE_INFORMATION_BUFFER:
   .checksum: db 0x00
   .end_buffer: 
 
+
+
+DRIVE_INFORMATION_BUFFER_SIZE equ DRIVE_INFORMATION_BUFFER.end_buffer - DRIVE_INFORMATION_BUFFER
