@@ -79,7 +79,7 @@ enumerate_storage_devices:
     mov al, [DETECTED_STORAGE_DEVICES.count]
     shr ax, 4
     add ax, DETECTED_STORAGE_DEVICES.fixed_disks
-    mov [ax], dl
+    mov [bp], dl
     add byte[DETECTED_STORAGE_DEVICES.count], 8
 
   .removable_media_found:
