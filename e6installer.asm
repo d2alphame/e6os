@@ -26,8 +26,6 @@
 START:
 cli                                               ; Clear interrupts
 
-mov [BOOT_DEVICE], dl                             ; Before doing anything, save the boot device
-
 ; Setup a stack we can work with. This stack is setup somewhere below the loaded installer code
 xor ax, ax
 mov ss, ax
@@ -39,6 +37,7 @@ mov ax, INSTALLER_STARTUP_SEGMENT                 ; This is defined in the e6con
 mov ds, ax
 mov es, ax
 
+mov [BOOT_DEVICE], dl                             ; Before doing any other thing, save the boot device
 sti                                               ; Set interrupts again
 
 ; Show the installer's startup message
@@ -47,21 +46,44 @@ xor al, al
 call print_byte_terminated_string
 
 ; Wait for the user to press the 'enter' key
-mov al, 0x1C
+mov al, 0x1C                                      ; scancode of the key to wait for
 call wait_for_key_scancode
+call print_newline
+call print_newline
 
-call clear_screen
-
-xor al, al
-mov si, STORAGE_DEVICE_SEARCH_MSG
+mov si, SELECT_STORAGE_DEVICE_MSG
 call print_byte_terminated_string
 
-; Enumerate storage devices
-mov ah, 0x48
-mov dl, 0x80
-mov si, DRIVE_INFORMATION_BUFFER
+; Wait for the user to press a key to select fixed disk or removable disk
+int 16h
+jmp $
 
 
+; Enumerate storage devices. Here look for 15 removable disks and 15 fixed disks
+
+; mov dl, 0xE0
+; mov ah, 0x41
+; mov bx, 0x55AA
+; int 13h
+; xor ax, ax
+; mov ax, cx
+; call print_eax_hex
+
+; jmp $
+
+; mov si, DRIVE_INFORMATION_BUFFER.bus_type_ascii
+; mov ecx, 0x04
+; call print_string_ecx_length
+
+; mov ah, 0x48
+; mov si, DRIVE_INFORMATION_BUFFER
+; mov dl, 0x80
+; int 13h
+; mov eax, [DRIVE_INFORMATION_BUFFER.sector_count]
+; call print_eax_hex
+; jmp $ 
+; mov eax, [DRIVE_INFORMATION_BUFFER.sector_count]
+; call print_eax_hex
 
 jmp $
 
@@ -130,7 +152,6 @@ print_eax_hex:
   ; IN:
   ;    EAX - The value to print
   ; ---------------------------------------------------------
-
   mov edx, eax                                ; Preserve the eax value in edx
   mov di, EAX_HEX.hexstring
   mov cx, 0x08                                ; Number of nibbles in a double word
@@ -153,6 +174,7 @@ print_eax_hex:
       int 10h
       loop .fetch
     ret
+
 
 
 clear_screen:
@@ -194,13 +216,13 @@ wait_for_key_scancode:
     ret
 
 
+
 dump_memory_hex:
   ; Dump content of memory in hexadecimal. Dumps 256 bytes of memory
   ; IN
   ;   SI: Memory address to dump.
   ; NOTE: The address is expected to be 256-byte aligned
   ;-----------------------------------------------------------------
-
     ; Check to ensure the address is 256 byte aligned
     mov dx, si
     and dx, 0x00FF
@@ -314,7 +336,6 @@ dump_memory_hex:
 
 
 
-
 BOOT_DEVICE: db 0x00                            ; The device number of the boot device
 
 STARTUP_MSG:  
@@ -336,12 +357,18 @@ DUMP_LINE_BUFFER_HEX:
 STORAGE_DEVICE_SEARCH_MSG:
   db "Searching for storage devices...", 0x0A, 0x0D, 0x0A, 0x0D, 0x00
 
+SELECT_STORAGE_DEVICE_MSG:
+  db "Where do you want to install e6os?", 0x0A, 0x0D
+  db "Enter 1 to install on a fixed disk", 0x0A, 0x0D
+  db "Enter 2 to install on a removable media", 0x0A, 0x0D, 0x00
+
 DETECTED_DEVICES_MSG:
   db "The following storage devices were detected", 0x0A, 0x0D, 0x00
 
 DETECTED_STORAGE_DEVICES:
-  .count: db 0                        ; Number of storage devices found
-  .storage_devices dq 0x00, 0x00      ; Store detected disks here 0x80 to 0x8F
+  .count: db 0                      ; Bits 0-3 = number of removable disks found. Bits 4-7 = number of fixed disks found
+  .removable_disks: times 15 db 0   ; BIOS interrupt numbers for removable disks 0x00 - 0x7F
+  .fixed_disks: times 15 db 0       ; BIOS interrupt numbers for fixed disks 0x80 - 0xFF
 
 DRIVE_INFORMATION_BUFFER:
   .buffer_size: dw DRIVE_INFORMATION_BUFFER.end_buffer - DRIVE_INFORMATION_BUFFER
