@@ -65,24 +65,42 @@ enumerate_storage_devices:
   mov si, DRIVE_INFORMATION_BUFFER
   .loop:
     mov word [DRIVE_INFORMATION_BUFFER.buffer_size], DRIVE_INFORMATION_BUFFER_SIZE
-    mov ah, 0x48          ; Function to get drive parameters
+    mov ah, 0x48              ; Function to get drive parameters
     int 13h
-    jc .pre_loop             ; Carry flag is set on error
+    jc .pre_loop              ; Carry flag is set on error
     
+    cmp dword [DRIVE_INFORMATION_BUFFER.sector_count], 0
+    je .pre_loop
+
     ; Check the 'removable-media' flag in the result
     xor eax, eax
     mov ax, [DRIVE_INFORMATION_BUFFER.information_flags]
     test ax, 0x04
-    jnz .removable_media_found
+    jz .removable_media_found
+
   .fixed_disk_found:
     xor eax, eax
     mov al, [DETECTED_STORAGE_DEVICES.count]
     shr ax, 4
-    add ax, DETECTED_STORAGE_DEVICES.fixed_disks
-    mov [bp], dl
+    cmp al, 15          ; We already found 15 fixed disk. So don't bother
+    je .pre_loop
+    mov di, ax
+    add di, DETECTED_STORAGE_DEVICES.fixed_disks
+    dec di
+    mov [di], dl
     add byte[DETECTED_STORAGE_DEVICES.count], 8
 
   .removable_media_found:
+    xor eax, eax
+    mov al, [DETECTED_STORAGE_DEVICES.count]
+    and ax, 0x0F
+    cmp al, 15          ; We already found 15 removable disks. So don't bother
+    je .pre_loop
+    mov di, ax
+    add di, DETECTED_STORAGE_DEVICES.removable_disks
+    dec di
+    mov [di], dl
+    inc byte [DETECTED_STORAGE_DEVICES.count]
   
   .pre_loop:              ; An error occured
     cmp dl, 0xFF          ; If we've exhausted all possible BIOS drive numbers
@@ -97,6 +115,11 @@ enumerate_storage_devices:
 
   .done:
     
+  ; mov si, DETECTED_STORAGE_DEVICES
+  ; call dump_memory_hex
+  ; jmp $
+
+
 
   ; xor ax, ax
   ; mov ax, cx
@@ -399,13 +422,13 @@ SELECT_STORAGE_DEVICE_MSG:
 DETECTED_DEVICES_MSG:
   db "The following storage devices were detected", 0x0A, 0x0D, 0x00
 
+align 256
 DETECTED_STORAGE_DEVICES:
   .count: db 0                      ; Bits 0-3 = number of removable disks found. Bits 4-7 = number of fixed disks found
   .removable_disks: times 15 db 0   ; BIOS interrupt numbers for removable disks 0x00 - 0x7F
   .fixed_disks: times 15 db 0       ; BIOS interrupt numbers for fixed disks 0x80 - 0xFF
 
 DRIVE_INFORMATION_BUFFER:
-  ;.buffer_size: dw DRIVE_INFORMATION_BUFFER.end_buffer - DRIVE_INFORMATION_BUFFER
   .buffer_size: dw DRIVE_INFORMATION_BUFFER_SIZE
   .information_flags: dw 0x00
   .cylinders: dd 0x00
