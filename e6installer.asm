@@ -61,6 +61,8 @@ call print_byte_terminated_string
 
 ; Enumerate storage devices. Here look for 15 removable disks and 15 fixed disks
 enumerate_storage_devices:
+  xor ecx, ecx                ; displacement for storing removable disk
+  xor ebp, ebp                ; displacement for storing fixed disks
   xor edx, edx
   mov si, DRIVE_INFORMATION_BUFFER
   .loop:
@@ -76,7 +78,7 @@ enumerate_storage_devices:
     xor eax, eax
     mov ax, [DRIVE_INFORMATION_BUFFER.information_flags]
     test ax, 0x04
-    jz .removable_media_found
+    jnz .removable_media_found
 
   .fixed_disk_found:
     xor eax, eax
@@ -84,11 +86,12 @@ enumerate_storage_devices:
     shr ax, 4
     cmp al, 15          ; We already found 15 fixed disk. So don't bother
     je .pre_loop
-    mov di, ax
-    add di, DETECTED_STORAGE_DEVICES.fixed_disks
-    dec di
+    mov di, DETECTED_STORAGE_DEVICES.fixed_disks
+    add di, bp
     mov [di], dl
-    add byte[DETECTED_STORAGE_DEVICES.count], 8
+    inc bp
+    add byte[DETECTED_STORAGE_DEVICES.count], 16
+    jmp .pre_loop
 
   .removable_media_found:
     xor eax, eax
@@ -96,10 +99,10 @@ enumerate_storage_devices:
     and ax, 0x0F
     cmp al, 15          ; We already found 15 removable disks. So don't bother
     je .pre_loop
-    mov di, ax
-    add di, DETECTED_STORAGE_DEVICES.removable_disks
-    dec di
+    mov di, DETECTED_STORAGE_DEVICES.removable_disks
+    add di, cx
     mov [di], dl
+    inc cx
     inc byte [DETECTED_STORAGE_DEVICES.count]
   
   .pre_loop:              ; An error occured
@@ -114,22 +117,10 @@ enumerate_storage_devices:
     jmp .loop
 
   .done:
-    
-  ; mov si, DETECTED_STORAGE_DEVICES
-  ; call dump_memory_hex
-  ; jmp $
+    mov si, DETECTED_STORAGE_DEVICES
+    call dump_memory_hex
+    jmp $
 
-
-
-  ; xor ax, ax
-  ; mov ax, cx
-  ; call print_eax_hex
-
-; jmp $
-
-; mov si, DRIVE_INFORMATION_BUFFER.bus_type_ascii
-; mov ecx, 0x04
-; call print_string_ecx_length
 
 ; mov ah, 0x48
 ; mov si, DRIVE_INFORMATION_BUFFER
