@@ -1,0 +1,1 @@
+EFI_SUCCESS equ 0
