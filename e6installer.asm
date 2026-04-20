@@ -45,20 +45,6 @@ mov si, STARTUP_MSG
 xor al, al
 call print_byte_terminated_string
 
-; Wait for the user to press the 'enter' key
-mov al, 0x1C                                      ; scancode of the key to wait for
-call wait_for_key_scancode
-call print_newline
-call print_newline
-xor al, al
-mov si, SELECT_STORAGE_DEVICE_MSG
-call print_byte_terminated_string
-
-; Wait for the user to press a key to select fixed disk or removable disk
-; int 16h
-; jmp $
-
-
 ; Enumerate storage devices. Here look for 15 removable disks and 15 fixed disks
 enumerate_storage_devices:
   xor ecx, ecx                ; displacement for storing removable disk
@@ -117,22 +103,9 @@ enumerate_storage_devices:
     jmp .loop
 
   .done:
-    mov si, DETECTED_STORAGE_DEVICES
-    call dump_memory_hex
-    jmp $
 
 
-; mov ah, 0x48
-; mov si, DRIVE_INFORMATION_BUFFER
-; mov dl, 0x80
-; int 13h
-; mov eax, [DRIVE_INFORMATION_BUFFER.sector_count]
-; call print_eax_hex
-; jmp $ 
-; mov eax, [DRIVE_INFORMATION_BUFFER.sector_count]
-; call print_eax_hex
 
-jmp $
 
 
 
@@ -413,7 +386,6 @@ SELECT_STORAGE_DEVICE_MSG:
 DETECTED_DEVICES_MSG:
   db "The following storage devices were detected", 0x0A, 0x0D, 0x00
 
-align 256
 DETECTED_STORAGE_DEVICES:
   .count: db 0                      ; Bits 0-3 = number of removable disks found. Bits 4-7 = number of fixed disks found
   .removable_disks: times 15 db 0   ; BIOS interrupt numbers for removable disks 0x00 - 0x7F
