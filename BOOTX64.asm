@@ -91,8 +91,13 @@ SECTION_HEADERS:
 
 CODE:
 EntryPoint:
-    mov [OPTIONAL_HEADER_START.EFI_IMAGE_HANDLE], rcx
-    mov [OPTIONAL_HEADER_START.EFI_SYSTEM_TABLE], rdx
+    ; mov [OPTIONAL_HEADER_START.EFI_IMAGE_HANDLE], rcx
+    ; mov [OPTIONAL_HEADER_START.EFI_SYSTEM_TABLE], rdx
+
+    ; Save the Image handle and the system table pointer as soon as we receive them
+    lea rbx, [START]
+    mov [rbx + IMAGE_HANDLE_OFFSET], rcx
+    mov [rbx + SYSTEM_TABLE_OFFSET], rdx
 
     ; Point to the EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL
     add rdx, EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL
@@ -124,6 +129,5 @@ times 4096 - ($ - START) db 0x00                      ; Pad up to 4kb
 HEADER_END:
 END:
 
-
-EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL                 equ 64
-EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_OutputString    equ 8
+%include "eficonstants.asm"
+%include "e6constants.asm"
