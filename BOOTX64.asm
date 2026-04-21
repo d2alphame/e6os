@@ -22,7 +22,9 @@ START:
 HEADER_START:
 STANDARD_HEADER:
     .DOS_SIGNATURE:              db "MZ"                                                             ; DOS Signature. This is required
-    .DOS_ALIGNMENT:              dw 0x00                                                             ; This is just to make the PE below align on a 4-byte boundary
+    times 60 - ($ - STANDARD_HEADER) db 0
+    .SIGNATURE_POINTER:            .PE_SIGNATURE - START
+    ; .DOS_ALIGNMENT:              dw 0x00                                                             ; This is just to make the PE below align on a 4-byte boundary
     .PE_SIGNATURE:               db 'PE', 0x00, 0x00                                                 ; This is the pe signature. The characters 'PE' followed by 2 null bytes
     .MACHINE_TYPE:               dw 0x8664                                                           ; Targetting the x64 machine
     .NUMBER_OF_SECTIONS:         dw 1                                                                ; Number of sections. Indicates size of section table that immediately follows the headers
@@ -42,7 +44,7 @@ OPTIONAL_HEADER_START:
     .ENTRY_POINT_ADDRESS:        dd EntryPoint - START           ; Address of entry point relative to image base when the image is loaded in memory
     .BASE_OF_CODE_ADDRESS:       dd START                        ; Relative address of base of code
     .IMAGE_BASE:                 dq 0x10000                      ; Where in memory we would prefer the image to be loaded at
-    .SECTION_ALIGNMENT:          dd 0x0004                       ; Alignment in bytes of sections when they are loaded in memory. Align to page boundry (4kb)
+    .SECTION_ALIGNMENT:          dd 0x1000                       ; Alignment in bytes of sections when they are loaded in memory. Align to page boundry (4kb)
     .FILE_ALIGNMENT:             dd 0x1000                       ; Alignment of sections in the file. Also align to 4kb
 
     ; What would normally follow should be MAJOR_OS_VERSION (2 bytes), MINOR_OS_VERSION (2 bytes), MAJOR_IMAGE_VERSION (2 bytes), MINOR_IMAGE_VERSION (2 bytes),
