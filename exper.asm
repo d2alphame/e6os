@@ -146,7 +146,7 @@ CODE:
 
 CODE_END:
 
-; times 4096-($-PE)   db 0
+times 4096-($-PE)   db 0
 HEADER_END:
 
 END:
