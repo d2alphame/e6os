@@ -87,7 +87,7 @@ SECTION_HEADERS:
         .number_of_relocations      dw 0                                    ; Set to 0 for executable images
         .number_of_line_numbers     dw 0                                    ; Should be 0 for images
         .characteristics            dd 0x70000060                           ; Need to read up more on this
-
+HEADER_END:
 CODE:
 EntryPoint:
 
@@ -119,7 +119,7 @@ EntryPoint:
     ; ret
 
 times 4096 - ($ - START) db 0x00                      ; Pad up to 4kb
-HEADER_END:
+; HEADER_END:
 END:
 
 %include "eficonstants.asm"
