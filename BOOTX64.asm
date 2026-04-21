@@ -104,11 +104,11 @@ EntryPoint:
     mov rax, [rdx]
     lea rdx, [OPTIONAL_HEADER_START.BOOT_MESSAGE]    ; The boot message. We're going to print it.
 
-    sub rsp, 40                ; Make room on the stack along with the shadow space
+    sub rsp, 40                 ; Make room on the stack along with the shadow space
     call rax
+    add rsp, 40                 ; Restore rsp
+    mov rax, EFI_SUCCESS         ; UEFI use rax = 0 for success
 
-    add rsp, 40
-    mov rax EFI_SUCCESS        ; UEFI use rax = 0 for success
     jmp $
     ret
 
