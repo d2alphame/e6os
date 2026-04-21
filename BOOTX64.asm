@@ -112,8 +112,7 @@ EntryPoint:
     jmp $
     ret
 
-
-;times 4096 - ($ - START) db 0x00                      ; Pad up to 4kb
+times 4096 - ($ - START) db 0x00                      ; Pad up to 4kb
 HEADER_END:
 END:
 
