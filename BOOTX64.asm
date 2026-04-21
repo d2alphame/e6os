@@ -1,4 +1,4 @@
-; Copyright (C) 2025 Deji Adegbite
+; Copyright (C) 2022-2026 Deji Adegbite
 ;
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License as published by
@@ -47,20 +47,20 @@ OPTIONAL_HEADER_START:
 
     ; What would normally follow should be MAJOR_OS_VERSION (2 bytes), MINOR_OS_VERSION (2 bytes), MAJOR_IMAGE_VERSION (2 bytes), MINOR_IMAGE_VERSION (2 bytes).
     ; These make a total of 8 bytes. E6 would use that 8 bytes to store the EFI_IMAGE_HANDLE
-    .EFI_IMAGE_HANDLE:             dq 0x00                         ; This will be passed to us by EFI when e6 boots
+    ; .EFI_IMAGE_HANDLE:             dq 0x00                         ; This will be passed to us by EFI when e6 boots
 
-    ; .MAJOR_OS_VERSION:           dw 0x00                         ; I'm not sure UEFI requires these and the following 'version woo'
-    ; .MINOR_OS_VERSION:           dw 0x00                         ; More of these version thingies are to follow. Again, not sure UEFI needs them
-    ; .MAJOR_IMAGE_VERSION:        dw 0x00                         ; Major version of the image
-    ; .MINOR_IMAGE_VERSION:        dw 0x00                         ; Minor version of the image
+    .MAJOR_OS_VERSION:           dw 0x00                         ; I'm not sure UEFI requires these and the following 'version woo'
+    .MINOR_OS_VERSION:           dw 0x00                         ; More of these version thingies are to follow. Again, not sure UEFI needs them
+    .MAJOR_IMAGE_VERSION:        dw 0x00                         ; Major version of the image
+    .MINOR_IMAGE_VERSION:        dw 0x00                         ; Minor version of the image
     
     ; MAJOR_SUBSYSTEM_VERSION (2 bytes), MINOR_SUBSYSTEM_VERSION (2 bytes), and WIN32_VERSION_VALUE (4 bytes) would normally follow for a total of 8 bytes. E6 uses
     ; this to store the pointer to the EFI_SYSTEM_TABLE that would be passed by EFI on boot.
-    .EFI_SYSTEM_TABLE:             dq 0x00                         ; Received from EFI on boot
+    ; .EFI_SYSTEM_TABLE:             dq 0x00                         ; Received from EFI on boot
 
-    ; .MAJOR_SUBSYSTEM_VERSION:    dw 0x00                         ; 
-    ; .MINOR_SUBSYSTEM_VERSION:    dw 0x00                         ;
-    ; .WIN32_VERSION_VALUE:        dd 0x00                         ; Reserved, must be 0
+    .MAJOR_SUBSYSTEM_VERSION:    dw 0x00                         ; 
+    .MINOR_SUBSYSTEM_VERSION:    dw 0x00                         ;
+    .WIN32_VERSION_VALUE:        dd 0x00                         ; Reserved, must be 0
     
     .IMAGE_SIZE:                 dd END - START                  ; The size in bytes of the image when loaded in memory including all headers
     .HEADERS_SIZE:               dd HEADER_END - HEADER_START    ; Size of all the headers
@@ -91,8 +91,6 @@ SECTION_HEADERS:
 
 CODE:
 EntryPoint:
-    ; mov [OPTIONAL_HEADER_START.EFI_IMAGE_HANDLE], rcx
-    ; mov [OPTIONAL_HEADER_START.EFI_SYSTEM_TABLE], rdx
 
     ; Save the Image handle and the system table pointer as soon as we receive them
     lea rbx, [START]
