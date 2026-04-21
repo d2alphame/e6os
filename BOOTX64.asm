@@ -94,24 +94,24 @@ EntryPoint:
 
 
     ; Save the Image handle and the system table pointer as soon as we receive them
-    lea rbx, [START]
-    mov [rbx + IMAGE_HANDLE_OFFSET], rcx
-    mov [rbx + SYSTEM_TABLE_OFFSET], rdx
-
-    ; Point to the EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL
-    add rdx, EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL
-    mov rdx, [rdx]
-
-    mov rcx, rdx
-
-    add rdx, EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_OutputString
-    mov rax, [rdx]
-    lea rdx, [OPTIONAL_HEADER_START.BOOT_MESSAGE]    ; The boot message. We're going to print it.
-
-    sub rsp, 40                 ; Make room on the stack along with the shadow space
-    call rax
-    add rsp, 40                 ; Restore rsp
-    mov rax, EFI_SUCCESS         ; UEFI use rax = 0 for success
+;     lea rbx, [START]
+;     mov [rbx + IMAGE_HANDLE_OFFSET], rcx
+;     mov [rbx + SYSTEM_TABLE_OFFSET], rdx
+; 
+;     ; Point to the EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL
+;     add rdx, EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL
+;     mov rdx, [rdx]
+; 
+;     mov rcx, rdx
+; 
+;     add rdx, EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_OutputString
+;     mov rax, [rdx]
+;     lea rdx, [OPTIONAL_HEADER_START.BOOT_MESSAGE]    ; The boot message. We're going to print it.
+; 
+;     sub rsp, 40                 ; Make room on the stack along with the shadow space
+;     call rax
+;     add rsp, 40                 ; Restore rsp
+;     mov rax, EFI_SUCCESS         ; UEFI use rax = 0 for success
 
     jmp $
     ret
