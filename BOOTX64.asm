@@ -23,7 +23,7 @@ HEADER_START:
 STANDARD_HEADER:
     .DOS_SIGNATURE:              db "MZ"                                                             ; DOS Signature. This is required
     times 60 - ($ - STANDARD_HEADER) db 0
-    .SIGNATURE_POINTER:            .PE_SIGNATURE - START
+    .SIGNATURE_POINTER:            dd .PE_SIGNATURE - START
     ; .DOS_ALIGNMENT:              dw 0x00                                                             ; This is just to make the PE below align on a 4-byte boundary
     .PE_SIGNATURE:               db 'PE', 0x00, 0x00                                                 ; This is the pe signature. The characters 'PE' followed by 2 null bytes
     .MACHINE_TYPE:               dw 0x8664                                                           ; Targetting the x64 machine
