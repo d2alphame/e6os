@@ -115,8 +115,8 @@ EntryPoint:
 ;     add rsp, 40                 ; Restore rsp
 ;     mov rax, EFI_SUCCESS         ; UEFI use rax = 0 for success
 
-    jmp $
-    ret
+    ; jmp $
+    ; ret
 
 times 4096 - ($ - START) db 0x00                      ; Pad up to 4kb
 HEADER_END:
