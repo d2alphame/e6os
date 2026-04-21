@@ -89,6 +89,10 @@ SECTION_HEADERS:
 CODE:
 EntryPoint:
 
+
+    jmp $
+
+
     ; Save the Image handle and the system table pointer as soon as we receive them
     lea rbx, [START]
     mov [rbx + IMAGE_HANDLE_OFFSET], rcx
