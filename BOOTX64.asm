@@ -43,9 +43,9 @@ OPTIONAL_HEADER_START:
     .UNINITIALIZED_DATA_SIZE:    dd 0x00                         ; Size of uninitialized data section
     .ENTRY_POINT_ADDRESS:        dd EntryPoint - START           ; Address of entry point relative to image base when the image is loaded in memory
     .BASE_OF_CODE_ADDRESS:       dd START                        ; Relative address of base of code
-    .IMAGE_BASE:                 dq 0x10000                      ; Where in memory we would prefer the image to be loaded at
-    .SECTION_ALIGNMENT:          dd 0x1000                       ; Alignment in bytes of sections when they are loaded in memory. Align to page boundry (4kb)
-    .FILE_ALIGNMENT:             dd 0x1000                       ; Alignment of sections in the file. Also align to 4kb
+    .IMAGE_BASE:                 dq 0x0000                      ; Where in memory we would prefer the image to be loaded at
+    .SECTION_ALIGNMENT:          dd 0x20                       ; Alignment in bytes of sections when they are loaded in memory. Align to page boundry (4kb)
+    .FILE_ALIGNMENT:             dd 0x20                       ; Alignment of sections in the file. Also align to 4kb
 
     ; What would normally follow should be MAJOR_OS_VERSION (2 bytes), MINOR_OS_VERSION (2 bytes), MAJOR_IMAGE_VERSION (2 bytes), MINOR_IMAGE_VERSION (2 bytes),
     ; MAJOR_SUBSYSTEM_VERSION (2 bytes), MINOR_SUBSYSTEM_VERSION (2 bytes), and WIN32_VERSION_VALUE (4 bytes). This gives a total of 16 bytes. This will be used
