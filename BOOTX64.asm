@@ -44,8 +44,8 @@ OPTIONAL_HEADER_START:
     .ENTRY_POINT_ADDRESS:        dd EntryPoint - START           ; Address of entry point relative to image base when the image is loaded in memory
     .BASE_OF_CODE_ADDRESS:       dd CODE                         ; Relative address of base of code
     .IMAGE_BASE:                 dq 0x400000                     ; Where in memory we would prefer the image to be loaded at
-    .SECTION_ALIGNMENT:          dd 0x1000                       ; Alignment in bytes of sections when they are loaded in memory. Align to page boundry (4kb)
-    .FILE_ALIGNMENT:             dd 0x1000                       ; Alignment of sections in the file. Also align to 4kb
+    .SECTION_ALIGNMENT:          dd 0x40                         ; Alignment in bytes of sections when they are loaded in memory
+    .FILE_ALIGNMENT:             dd 0x40                         ; Alignment of sections in the file
 
     ; What would normally follow should be MAJOR_OS_VERSION (2 bytes), MINOR_OS_VERSION (2 bytes), MAJOR_IMAGE_VERSION (2 bytes), MINOR_IMAGE_VERSION (2 bytes),
     ; MAJOR_SUBSYSTEM_VERSION (2 bytes), MINOR_SUBSYSTEM_VERSION (2 bytes), and WIN32_VERSION_VALUE (4 bytes). This gives a total of 16 bytes. This will be used
@@ -80,10 +80,10 @@ OPTIONAL_HEADER_END:
 SECTION_HEADERS:
     SECTION_ALL:
         .name                       db ".all", 0x00, 0x00, 0x00, 0x00
-        .virtual_size               dd END - START
-        .virtual_address            dd START
-        .size_of_raw_data           dd END - START
-        .pointer_to_raw_data        dd START
+        .virtual_size               dd END - CODE
+        .virtual_address            dd CODE
+        .size_of_raw_data           dd END - CODE
+        .pointer_to_raw_data        dd CODE
         .pointer_to_relocations     dd 0                                    ; Set to 0 for executable images
         .pointer_to_line_numbers    dd 0                                    ; There are no COFF line numbers
         .number_of_relocations      dw 0                                    ; Set to 0 for executable images
