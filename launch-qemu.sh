@@ -9,4 +9,4 @@ qemu-system-x86_64 \
   -device usb-ehci,id=ehci \
   -device usb-storage,bus=ehci.0,drive=usbdisk \
   -usb \
-  -boot menu=on
+  -boot menu=on \

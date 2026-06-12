@@ -22,9 +22,9 @@ START:
 HEADER_START:
 STANDARD_HEADER:
     .DOS_SIGNATURE:              db "MZ"                                                             ; DOS Signature. This is required
-    times 60 - ($ - STANDARD_HEADER) db 0
-    .SIGNATURE_POINTER:            dd .PE_SIGNATURE - START
-    ; .DOS_ALIGNMENT:              dw 0x00                                                             ; This is just to make the PE below align on a 4-byte boundary
+        times 60 - ($ - STANDARD_HEADER) db 0
+    .SIGNATURE_POINTER:          dd .PE_SIGNATURE - START
+    ; .DOS_ALIGNMENT:            dw 0x00                                                             ; This is just to make the PE below align on a 4-byte boundary
     .PE_SIGNATURE:               db 'PE', 0x00, 0x00                                                 ; This is the pe signature. The characters 'PE' followed by 2 null bytes
     .MACHINE_TYPE:               dw 0x8664                                                           ; Targetting the x64 machine
     .NUMBER_OF_SECTIONS:         dw 1                                                                ; Number of sections. Indicates size of section table that immediately follows the headers
@@ -38,14 +38,14 @@ OPTIONAL_HEADER_START:
     .MAGIC_NUMBER:               dw 0x020B                       ; PE32+ (i.e. pe64) magic number
     .MAJOR_LINKER_VERSION:       db 0                            ; I'm sure this isn't needed. So set to 0
     .MINOR_LINKER_VERSION:       db 0                            ; This too
-    .SIZE_OF_CODE:               dd END - START                  ; The size of the code section
-    .INITIALIZED_DATA_SIZE:      dd END - START                  ; Size of initialized data section
+    .SIZE_OF_CODE:               dd END - CODE                   ; The size of the code section
+    .INITIALIZED_DATA_SIZE:      dd END - CODE                   ; Size of initialized data section
     .UNINITIALIZED_DATA_SIZE:    dd 0x00                         ; Size of uninitialized data section
     .ENTRY_POINT_ADDRESS:        dd EntryPoint - START           ; Address of entry point relative to image base when the image is loaded in memory
-    .BASE_OF_CODE_ADDRESS:       dd START                        ; Relative address of base of code
-    .IMAGE_BASE:                 dq 0x400000                      ; Where in memory we would prefer the image to be loaded at
-    .SECTION_ALIGNMENT:          dd 0x20                       ; Alignment in bytes of sections when they are loaded in memory. Align to page boundry (4kb)
-    .FILE_ALIGNMENT:             dd 0x20                       ; Alignment of sections in the file. Also align to 4kb
+    .BASE_OF_CODE_ADDRESS:       dd CODE                         ; Relative address of base of code
+    .IMAGE_BASE:                 dq 0x400000                     ; Where in memory we would prefer the image to be loaded at
+    .SECTION_ALIGNMENT:          dd 0x1000                       ; Alignment in bytes of sections when they are loaded in memory. Align to page boundry (4kb)
+    .FILE_ALIGNMENT:             dd 0x1000                       ; Alignment of sections in the file. Also align to 4kb
 
     ; What would normally follow should be MAJOR_OS_VERSION (2 bytes), MINOR_OS_VERSION (2 bytes), MAJOR_IMAGE_VERSION (2 bytes), MINOR_IMAGE_VERSION (2 bytes),
     ; MAJOR_SUBSYSTEM_VERSION (2 bytes), MINOR_SUBSYSTEM_VERSION (2 bytes), and WIN32_VERSION_VALUE (4 bytes). This gives a total of 16 bytes. This will be used
@@ -71,8 +71,10 @@ OPTIONAL_HEADER_START:
     .HEAP_RESERVE_SIZE:          dq 0x200000                     ; Reserve 2MB for the heap... I think... :D
     .HEAP_COMMIT_SIZE:           dq 0x1000                       ; Commit 4kb of heap
     .LOADER_FLAGS:               dd 0x00                         ; Reserved, must be zero
-    .NUMBER_OF_RVA_AND_SIZES:    dd 0x00                         ; Number of entries in the data directory
+    .NUMBER_OF_RVA_AND_SIZES:    dd 0x10                         ; Number of entries in the data directory
 
+    DATA_DIRECTORIES:   times 16 dq 0
+    
 OPTIONAL_HEADER_END:
 
 SECTION_HEADERS:
@@ -92,7 +94,9 @@ CODE:
 EntryPoint:
 
 
-    jmp $
+    ; jmp $
+    mov rax, 0x00
+    ret
 
 
     ; Save the Image handle and the system table pointer as soon as we receive them
