@@ -23,7 +23,7 @@ HEADER_START:
 STANDARD_HEADER:
     .DOS_SIGNATURE:              db "MZ"                                                             ; DOS Signature. This is required
         
-        ; A DOS stub should normally follow this but uefi doesn't need this, so this will be filled
+        ; A DOS stub should normally be here but uefi doesn't need it, so this will be filled
         ; with something a bit more useful.
 
         .print_boot_message:
