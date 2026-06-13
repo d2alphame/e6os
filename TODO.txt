@@ -1,1 +1,14 @@
 'E6BINARY' anywhere within the first 65536 bytes.
+
+# Installer
+ 1. Enumerate and describe storage devices and/partitions
+ 2. Ask user for target location for installation
+ 3. User selects a target location or cancels installation
+ 4. Advice user to backup the target disk or wait for user to continue or cancel
+ 5. User continues
+ 6. Check if target device has GPT partitioning scheme and create one if it doesn't
+ 7. Check if it has an efi system partition and create one if it doesn't
+ 8. Create other partitions that e6 needs/uses
+ 9. Copy boot files from installation device onto newly created efi partition
+10. Install is done reboot
+E6 is ready  
