@@ -1,0 +1,1 @@
+hdiutil attach -imagekey diskimage-class=CRawDiskImage usb-flash.img
