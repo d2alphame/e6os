@@ -22,7 +22,15 @@ START:
 HEADER_START:
 STANDARD_HEADER:
     .DOS_SIGNATURE:              db "MZ"                                                             ; DOS Signature. This is required
-        times 60 - ($ - STANDARD_HEADER) db 0
+        
+        ; A DOS stub should normally follow this but uefi doesn't need this, so this will be filled
+        ; with something a bit more useful.
+
+        .print_boot_message:
+            jmp $;
+        
+        times 60 - ($ - STANDARD_HEADER) db 0                                                        ; Pad the DOS stub up to 60 bytes
+    
     .SIGNATURE_POINTER:          dd .PE_SIGNATURE - START
     ; .DOS_ALIGNMENT:            dw 0x00                                                             ; This is just to make the PE below align on a 4-byte boundary
     .PE_SIGNATURE:               db 'PE', 0x00, 0x00                                                 ; This is the pe signature. The characters 'PE' followed by 2 null bytes
@@ -92,7 +100,7 @@ SECTION_HEADERS:
 HEADER_END:
 CODE:
 EntryPoint:
-
+    call STANDARD_HEADER.print_boot_message
 
     ; jmp $
     mov rax, 0x00
