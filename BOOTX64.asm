@@ -31,7 +31,7 @@ STANDARD_HEADER:
         
         times 60 - ($ - STANDARD_HEADER) db 0                                                        ; Pad the DOS stub up to 60 bytes
     
-    .SIGNATURE_POINTER:          dd .PE_SIGNATURE - START
+    .SIGNATURE_POINTER:          dd .PE_SIGNATURE - START                                            ; Points at the PE Signature
     ; .DOS_ALIGNMENT:            dw 0x00                                                             ; This is just to make the PE below align on a 4-byte boundary
     .PE_SIGNATURE:               db 'PE', 0x00, 0x00                                                 ; This is the pe signature. The characters 'PE' followed by 2 null bytes
     .MACHINE_TYPE:               dw 0x8664                                                           ; Targetting the x64 machine
