@@ -4,7 +4,7 @@ nasm -f bin INSTALL.asm -o INSTALL.EFI
 # Use hdiutil to mount the virtual installer usb disk
 hdiutil attach -imagekey diskimage-class=CRawDiskImage usb-flash.img
 
-# Copy the binary of the installer - INSTALL.EFI on to the usb stick
+# Copy the binary of the installer - INSTALL.EFI - on to the usb stick
 cp ./INSTALL.EFI /Volumes/USBDISK
 
 # Eject the virtual disk

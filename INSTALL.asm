@@ -77,10 +77,18 @@ OPTIONAL_HEADER_START:
     .CHECKSUM:                   dd 0x00                         ; Hoping this doesn't break the application
     .SUBSYSTEM:                  dw 10                           ; The subsystem. In this case we're making a UEFI application.
     .DLL_CHARACTERISTICS:        dw 0b000011110010000            ; I honestly don't know what to put here
-    .STACK_RESERVE_SIZE:         dq 0x200000                     ; Reserve 2MB for the stack... I guess...
-    .STACK_COMMIT_SIZE:          dq 0x1000                       ; Commit 4kb of the stack
-    .HEAP_RESERVE_SIZE:          dq 0x200000                     ; Reserve 2MB for the heap... I think... :D
-    .HEAP_COMMIT_SIZE:           dq 0x1000                       ; Commit 4kb of heap
+
+    ; UEFI doesn't use the following fields: stack size to reserve, stack size to commit, heap size to reserve, and heap size to commit. At 8 bytes each, this gives
+    ; us. 32 bytes we can use.
+
+    .UEFI_SYSTEM_TABLE:            dq 0                            ; UEFI loader hands this over to us when the image loads
+    .UEFI_IMAGE_HANDLE:            dq 0                            ; UEFI would also hand this over to us when the image loads
+        times 16                   db 0                            ; Pad with zeros. I will put something here later.
+
+    ; .STACK_RESERVE_SIZE:         dq 0x200000                     ; Reserve 2MB for the stack... I guess...
+    ; .STACK_COMMIT_SIZE:          dq 0x1000                       ; Commit 4kb of the stack
+    ; .HEAP_RESERVE_SIZE:          dq 0x200000                     ; Reserve 2MB for the heap... I think... :D
+    ; .HEAP_COMMIT_SIZE:           dq 0x1000                       ; Commit 4kb of heap
     .LOADER_FLAGS:               dd 0x00                         ; Reserved, must be zero
     .NUMBER_OF_RVA_AND_SIZES:    dd 0x10                         ; Number of entries in the data directory
 
