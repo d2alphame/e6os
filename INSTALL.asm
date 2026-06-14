@@ -28,9 +28,14 @@ STANDARD_HEADER:
         
         ; A DOS stub should normally be here but uefi doesn't need it, so this will be filled
         ; with something a bit more useful.
-
-        .print_boot_message:
-            jmp $;
+        .pre_start:
+            push rbx
+            lea rbx, [OPTIONAL_HEADER_START.EFI_IMAGE_HANDLE]
+            mov [rbx], rcx
+            add rbx, 8
+            mov [rbx], rdx
+            pop rbx
+            ret
         
         times 60 - ($ - STANDARD_HEADER) db 0                                                        ; Pad the DOS stub up to 60 bytes
     
@@ -79,11 +84,11 @@ OPTIONAL_HEADER_START:
     .DLL_CHARACTERISTICS:        dw 0b000011110010000            ; I honestly don't know what to put here
 
     ; UEFI doesn't use the following fields: stack size to reserve, stack size to commit, heap size to reserve, and heap size to commit. At 8 bytes each, this gives
-    ; us. 32 bytes we can use.
+    ; us 32 bytes we can use.
 
-    .UEFI_SYSTEM_TABLE:            dq 0                            ; UEFI loader hands this over to us when the image loads
-    .UEFI_IMAGE_HANDLE:            dq 0                            ; UEFI would also hand this over to us when the image loads
-        times 16                   db 0                            ; Pad with zeros. I will put something here later.
+    .EFI_IMAGE_HANDLE:             dq 0                            ; UEFI would also hand this over to us when the image loads
+    .EFI_SYSTEM_TABLE:             dq 0                            ; UEFI loader hands this over to us when the image loads
+        times 32 - ($ - .EFI_IMAGE_HANDLE) db 0                    ; Pad with zeros. I will put something here later.
 
     ; .STACK_RESERVE_SIZE:         dq 0x200000                     ; Reserve 2MB for the stack... I guess...
     ; .STACK_COMMIT_SIZE:          dq 0x1000                       ; Commit 4kb of the stack
@@ -109,13 +114,12 @@ SECTION_HEADERS:
         .number_of_line_numbers     dw 0                                    ; Should be 0 for images
         .characteristics            dd 0x70000060                           ; Need to read up more on this
 HEADER_END:
-CODE:
-EntryPoint:
-    call STANDARD_HEADER.print_boot_message
 
-    ; jmp $
-    mov rax, 0x00
-    ret
+CODE:
+    EntryPoint:
+        call STANDARD_HEADER.pre_start
+        mov rax, 0x00
+        ret
 
 
     ; Save the Image handle and the system table pointer as soon as we receive them
