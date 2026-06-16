@@ -1,3 +1,4 @@
 EFI_SUCCESS equ 0
+
 EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL                 equ 64
 EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_OutputString    equ 8
