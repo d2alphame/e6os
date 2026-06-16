@@ -88,6 +88,8 @@ OPTIONAL_HEADER_START:
 
     .EFI_IMAGE_HANDLE:             dq 0                            ; UEFI would also hand this over to us when the image loads
     .EFI_SYSTEM_TABLE:             dq 0                            ; UEFI loader hands this over to us when the image loads
+    .EFI_OutputString:             dq 0                            ; Pointer to the output string function of the EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL
+    .EFI_ClearScreen:              dq 0                            ; Pointer to the clear screen function of the EFI_SIMPLE_TEXt_OUTPUT_PROTOCOL
         times 32 - ($ - .EFI_IMAGE_HANDLE) db 0                    ; Pad with zeros. I will put something here later.
 
     ; .STACK_RESERVE_SIZE:         dq 0x200000                     ; Reserve 2MB for the stack... I guess...
