@@ -28,12 +28,12 @@ STANDARD_HEADER:
         
         ; A DOS stub should normally be here but uefi doesn't need it, so this will be filled
         ; with something a bit more useful.
-        .pre_start:
+        .pre_start: 
             push rbx
-            lea rbx, [OPTIONAL_HEADER_START.EFI_IMAGE_HANDLE]
-            mov [rbx], rcx
-            add rbx, 8
-            mov [rbx], rdx
+            lea rbx, [OPTIONAL_HEADER_START.EFI_IMAGE_HANDLE]   ; We're going to store the efi image handle
+            mov [rbx], rcx                                      ; Store the efi image handle
+            add rbx, 8                                          ; Point to the memory address to store the system table
+            mov [rbx], rdx                                      ; Store the pointer to the system table
             pop rbx
             ret
         
