@@ -34,6 +34,8 @@ STANDARD_HEADER:
             mov [rbx], rcx                                      ; Store the efi image handle
             add rbx, 8                                          ; Point to the memory address to store the system table
             mov [rbx], rdx                                      ; Store the pointer to the system table
+
+            ; Print the ins
             pop rbx
             ret
         
@@ -66,8 +68,8 @@ OPTIONAL_HEADER_START:
     ; What would normally follow should be MAJOR_OS_VERSION (2 bytes), MINOR_OS_VERSION (2 bytes), MAJOR_IMAGE_VERSION (2 bytes), MINOR_IMAGE_VERSION (2 bytes),
     ; MAJOR_SUBSYSTEM_VERSION (2 bytes), MINOR_SUBSYSTEM_VERSION (2 bytes), and WIN32_VERSION_VALUE (4 bytes). This gives a total of 16 bytes. This will be used
     ; to hold the boot message instead.
-    .BOOT_MESSAGE:                 db __utf16__ `E6OS\r\n\0`       ; EFI strings are UTF16 and null-terminated
-        .boot_msg_padding          dw 0                            ; Pad up the boot message above with 2 bytes it make 16 bytes
+    .BOOT_MESSAGE:                     db __utf16__ `E6OS \0`      ; EFI strings are UTF16 and null-terminated
+        times 16 - ($ - .BOOT_MESSAGE) db 0                        ; Pad up the boot message to 16 bytes
 
     ; .MAJOR_OS_VERSION:           dw 0x00                         ; I'm not sure UEFI requires these and the following 'version woo'
     ; .MINOR_OS_VERSION:           dw 0x00                         ; More of these version thingies are to follow. Again, not sure UEFI needs them
@@ -85,12 +87,8 @@ OPTIONAL_HEADER_START:
 
     ; UEFI doesn't use the following fields: stack size to reserve, stack size to commit, heap size to reserve, and heap size to commit. At 8 bytes each, this gives
     ; us 32 bytes we can use.
-
-    .EFI_IMAGE_HANDLE:             dq 0                            ; UEFI would also hand this over to us when the image loads
-    .EFI_SYSTEM_TABLE:             dq 0                            ; UEFI loader hands this over to us when the image loads
-    .EFI_OutputString:             dq 0                            ; Pointer to the output string function of the EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL
-    .EFI_ClearScreen:              dq 0                            ; Pointer to the clear screen function of the EFI_SIMPLE_TEXt_OUTPUT_PROTOCOL
-        times 32 - ($ - .EFI_IMAGE_HANDLE) db 0                    ; Pad with zeros. I will put something here later.
+    .BOOT_MESSAGE_CONT:              db __utf16__ `INSTALLER\r\n\0`  ; Continuation of the installer boot message
+        times 32 - ($ - .BOOT_MESSAGE_CONT) db 0                     ; Padd with zeros up to 32 bytes
 
     ; .STACK_RESERVE_SIZE:         dq 0x200000                     ; Reserve 2MB for the stack... I guess...
     ; .STACK_COMMIT_SIZE:          dq 0x1000                       ; Commit 4kb of the stack
@@ -99,7 +97,19 @@ OPTIONAL_HEADER_START:
     .LOADER_FLAGS:               dd 0x00                         ; Reserved, must be zero
     .NUMBER_OF_RVA_AND_SIZES:    dd 0x10                         ; Number of entries in the data directory
 
-    DATA_DIRECTORIES:   times 16 dq 0
+    ; The Data directories would normally follow but UEFI does not use them. This gives us another 128 bytes we can use here.
+    DATA_DIRECTORIES:
+        times 32 - ($ - DATA_DIRECTORIES) db 0                     ; Pad up to the Security Data Directory entry
+
+        .SECURITY:
+             times 8 db 0                                          ; Pad with zeros for now. We'll use proper values when we're ready for secure boot
+        .BASE_RELOC:
+             times 8 db 0                                          ; Putting this here to ensure it's zeros
+
+        times 128 - ($ - DATA_DIRECTORIES)                         ; Pad up the data directory entries up to 128 bytes
+    
+    ; DATA_DIRECTORIES:    times 16 dq 0
+
     
 OPTIONAL_HEADER_END:
 
