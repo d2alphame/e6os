@@ -30,10 +30,22 @@ STANDARD_HEADER:
         ; with something a bit more useful.
         .pre_start: 
             push rbx
-            lea rbx, [OPTIONAL_HEADER_START.EFI_IMAGE_HANDLE]   ; We're going to store the efi image handle
+            lea rbx, [DATA_DIRECTORIES.EFI_IMAGE_HANDLE]        ; We're going to store the efi image handle
             mov [rbx], rcx                                      ; Store the efi image handle
             add rbx, 8                                          ; Point to the memory address to store the system table
             mov [rbx], rdx                                      ; Store the pointer to the system table
+
+            ; Point to the simple text output protocol
+            add rdx, EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL 
+            mov rdx, [rdx]
+            mov rcx, rdx                                        ; Killing 2 birds with 1 stone. This happens to be the first parameter for Output String
+            add rdx, EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_OutputString
+            mov rbx, [rdx]
+            lea rdx, [OPTIONAL_HEADER_START.BOOT_MESSAGE]
+            sub rsp, 32
+            call rbx
+            add rsp, 32
+            jmp $
 
             ; Print the ins
             pop rbx
@@ -54,8 +66,14 @@ STANDARD_HEADER:
 
 OPTIONAL_HEADER_START:
     .MAGIC_NUMBER:               dw 0x020B                       ; PE32+ (i.e. pe64) magic number
-    .MAJOR_LINKER_VERSION:       db 0                            ; I'm sure this isn't needed. So set to 0
-    .MINOR_LINKER_VERSION:       db 0                            ; This too
+
+    ; The major linker version and the minor linker version would normally follow. Use these to store the major and minor e6os specification version
+    ; that this installer targets
+    .E6_TARGET_MAJOR_VERSION     db 1
+    .E6_TARGET_MINOR_VERSION     db 0
+
+    ; .MAJOR_LINKER_VERSION:       db 0                            ; I'm sure this isn't needed. So set to 0
+    ; .MINOR_LINKER_VERSION:       db 0                            ; This too
     .SIZE_OF_CODE:               dd END - CODE                   ; The size of the code section
     .INITIALIZED_DATA_SIZE:      dd END - CODE                   ; Size of initialized data section
     .UNINITIALIZED_DATA_SIZE:    dd 0x00                         ; Size of uninitialized data section
@@ -99,6 +117,12 @@ OPTIONAL_HEADER_START:
 
     ; The Data directories would normally follow but UEFI does not use them. This gives us another 128 bytes we can use here.
     DATA_DIRECTORIES:
+
+        .EFI_IMAGE_HANDLE                 dq 0                     ; Image handle will be passed to us in RCX
+        .EFI_SYSTEM_TABLE                 dq 0                     ; System table will be passed to us in RDX
+        .OutputString                     dq 0                     ; Pointer to the output string function
+        .ClearString                      dq 0                     ; Pointer to the clear screen function
+
         times 32 - ($ - DATA_DIRECTORIES) db 0                     ; Pad up to the Security Data Directory entry
 
         .SECURITY:
@@ -106,7 +130,7 @@ OPTIONAL_HEADER_START:
         .BASE_RELOC:
              times 8 db 0                                          ; Putting this here to ensure it's zeros
 
-        times 128 - ($ - DATA_DIRECTORIES)                         ; Pad up the data directory entries up to 128 bytes
+        times 128 - ($ - DATA_DIRECTORIES) db 0                    ; Pad up the data directory entries up to 128 bytes
     
     ; DATA_DIRECTORIES:    times 16 dq 0
 
