@@ -42,6 +42,7 @@ STANDARD_HEADER:
             mov rcx, rdx                                        ; Killing 2 birds with 1 stone. This happens to be the first parameter for Output String
             add rdx, EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_OutputString   ; Preparing to make a call to OutputString
             mov rbx, [rdx]
+
             lea rdx, [OPTIONAL_HEADER_START.BOOT_MESSAGE]           ; Print the first part of the installer's boot message
             sub rsp, 32
             call rbx
@@ -61,7 +62,7 @@ STANDARD_HEADER:
     .SYMBOL_TABLE_POINTER:       dd 0x00                                                             ; Pointer to the symbol table. There should be no symbol table in an image so this is 0
     .NUMBER_OF_SYMBOLS:          dd 0x00                                                             ; Because there are no symbol tables in an image
     .OPTIONAL_HEADER_SIZE:       dw OPTIONAL_HEADER_END - OPTIONAL_HEADER_START                      ; Size of the optional header
-    .CHARACTERISTICS:            dw 0b0010111000100010                                               ; These are the attributes of the file
+    .CHARACTERISTICS:            dw 0b0010111000100011                                               ; These are the attributes of the file
 
 OPTIONAL_HEADER_START:
     .MAGIC_NUMBER:               dw 0x020B                       ; PE32+ (i.e. pe64) magic number
@@ -85,7 +86,7 @@ OPTIONAL_HEADER_START:
     ; What would normally follow should be MAJOR_OS_VERSION (2 bytes), MINOR_OS_VERSION (2 bytes), MAJOR_IMAGE_VERSION (2 bytes), MINOR_IMAGE_VERSION (2 bytes),
     ; MAJOR_SUBSYSTEM_VERSION (2 bytes), MINOR_SUBSYSTEM_VERSION (2 bytes), and WIN32_VERSION_VALUE (4 bytes). This gives a total of 16 bytes. This will be used
     ; to hold the boot message instead.
-    .BOOT_MESSAGE:                     db __utf16__ `E6OS \0`      ; EFI strings are UTF16 and null-terminated
+    .BOOT_MESSAGE:                     db __utf16__ `E6OS 1.\0`      ; EFI strings are UTF16 and null-terminated
         times 16 - ($ - .BOOT_MESSAGE) db 0                        ; Pad up the boot message to 16 bytes
 
     ; .MAJOR_OS_VERSION:           dw 0x00                         ; I'm not sure UEFI requires these and the following 'version woo'
@@ -104,7 +105,7 @@ OPTIONAL_HEADER_START:
 
     ; UEFI doesn't use the following fields: stack size to reserve, stack size to commit, heap size to reserve, and heap size to commit. At 8 bytes each, this gives
     ; us 32 bytes we can use.
-    .BOOT_MESSAGE_CONT:              db __utf16__ `INSTALLER\r\n\0`  ; Continuation of the installer boot message
+    .BOOT_MESSAGE_CONT:              db __utf16__ `0 INSTALLER\r\n\0`  ; Continuation of the installer boot message
         times 32 - ($ - .BOOT_MESSAGE_CONT) db 0                     ; Padd with zeros up to 32 bytes
 
     ; .STACK_RESERVE_SIZE:         dq 0x200000                     ; Reserve 2MB for the stack... I guess...
@@ -130,7 +131,6 @@ OPTIONAL_HEADER_START:
             times 8 db 0                                           ; Putting this here to ensure it's zeros
 
         .pre_start_continue:
-
             pop rcx
             lea rdx, [OPTIONAL_HEADER_START.BOOT_MESSAGE_CONT]
             sub rsp, 32
