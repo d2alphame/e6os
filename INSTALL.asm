@@ -38,14 +38,16 @@ STANDARD_HEADER:
             ; Point to the simple text output protocol
             add rdx, EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL 
             mov rdx, [rdx]
+            push rdx                                            ; Preserve Simple Text Output Protocol on the stack
             mov rcx, rdx                                        ; Killing 2 birds with 1 stone. This happens to be the first parameter for Output String
-            add rdx, EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_OutputString
+            add rdx, EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_OutputString   ; Preparing to make a call to OutputString
             mov rbx, [rdx]
-            lea rdx, [OPTIONAL_HEADER_START.BOOT_MESSAGE]
+            lea rdx, [OPTIONAL_HEADER_START.BOOT_MESSAGE]           ; Print the first part of the installer's boot message
             sub rsp, 32
             call rbx
-            add rsp, 32
-            jmp $
+
+            ; Print the second part of the installer's boot message and continue from there
+            jmp DATA_DIRECTORIES.pre_start_continue                 ; Jump to the rest of the pre-start code
 
             ; Print the ins
             pop rbx
@@ -126,9 +128,18 @@ OPTIONAL_HEADER_START:
         times 32 - ($ - DATA_DIRECTORIES) db 0                     ; Pad up to the Security Data Directory entry
 
         .SECURITY:
-             times 8 db 0                                          ; Pad with zeros for now. We'll use proper values when we're ready for secure boot
+            times 8 db 0                                           ; Pad with zeros for now. We'll use proper values when we're ready for secure boot
         .BASE_RELOC:
-             times 8 db 0                                          ; Putting this here to ensure it's zeros
+            times 8 db 0                                           ; Putting this here to ensure it's zeros
+
+        .pre_start_continue:
+            add rsp, 32
+            pop rcx
+            lea rdx, [OPTIONAL_HEADER_START.BOOT_MESSAGE_CONT]
+            sub rsp, 32
+            call rbx
+            add rsp, 32
+            jmp $
 
         times 128 - ($ - DATA_DIRECTORIES) db 0                    ; Pad up the data directory entries up to 128 bytes
     
