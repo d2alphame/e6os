@@ -45,14 +45,11 @@ STANDARD_HEADER:
             lea rdx, [OPTIONAL_HEADER_START.BOOT_MESSAGE]           ; Print the first part of the installer's boot message
             sub rsp, 32
             call rbx
+            add rsp, 32
 
             ; Print the second part of the installer's boot message and continue from there
             jmp DATA_DIRECTORIES.pre_start_continue                 ; Jump to the rest of the pre-start code
 
-            ; Print the ins
-            pop rbx
-            ret
-        
         times 60 - ($ - STANDARD_HEADER) db 0                                                        ; Pad the DOS stub up to 60 bytes
     
     .SIGNATURE_POINTER:          dd .PE_SIGNATURE - START                                            ; Points at the PE Signature
@@ -133,16 +130,18 @@ OPTIONAL_HEADER_START:
             times 8 db 0                                           ; Putting this here to ensure it's zeros
 
         .pre_start_continue:
-            add rsp, 32
+
             pop rcx
             lea rdx, [OPTIONAL_HEADER_START.BOOT_MESSAGE_CONT]
             sub rsp, 32
             call rbx
             add rsp, 32
+
+            pop rbx
             jmp $
 
         times 128 - ($ - DATA_DIRECTORIES) db 0                    ; Pad up the data directory entries up to 128 bytes
-    
+
     ; DATA_DIRECTORIES:    times 16 dq 0
 
     
