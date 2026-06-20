@@ -30,7 +30,7 @@ STANDARD_HEADER:
         ; with something a bit more useful.
         .pre_start: 
             push rbx
-            lea rbx, [DATA_DIRECTORIES.EFI_IMAGE_HANDLE]        ; We're going to store the efi image handle
+            lea rbx, [DATA.EFI_IMAGE_HANDLE]                    ; We're going to store the efi image handle
             mov [rbx], rcx                                      ; Store the efi image handle
             add rbx, 8                                          ; Point to the memory address to store the system table
             mov [rbx], rdx                                      ; Store the pointer to the system table
@@ -85,8 +85,8 @@ OPTIONAL_HEADER_START:
 
     ; What would normally follow should be MAJOR_OS_VERSION (2 bytes), MINOR_OS_VERSION (2 bytes), MAJOR_IMAGE_VERSION (2 bytes), MINOR_IMAGE_VERSION (2 bytes),
     ; MAJOR_SUBSYSTEM_VERSION (2 bytes), MINOR_SUBSYSTEM_VERSION (2 bytes), and WIN32_VERSION_VALUE (4 bytes). This gives a total of 16 bytes. This will be used
-    ; to hold the boot message instead.
-    .BOOT_MESSAGE:                     db __utf16__ `E6OS 1.\0`      ; EFI strings are UTF16 and null-terminated
+    ; to hold the first part of the installer's boot message instead.
+    .BOOT_MESSAGE:                     db __utf16__ `E6OS 1.\0`    ; EFI strings are UTF16 and null-terminated
         times 16 - ($ - .BOOT_MESSAGE) db 0                        ; Pad up the boot message to 16 bytes
 
     ; .MAJOR_OS_VERSION:           dw 0x00                         ; I'm not sure UEFI requires these and the following 'version woo'
@@ -112,18 +112,19 @@ OPTIONAL_HEADER_START:
     ; .STACK_COMMIT_SIZE:          dq 0x1000                       ; Commit 4kb of the stack
     ; .HEAP_RESERVE_SIZE:          dq 0x200000                     ; Reserve 2MB for the heap... I think... :D
     ; .HEAP_COMMIT_SIZE:           dq 0x1000                       ; Commit 4kb of heap
-    .LOADER_FLAGS:               dd 0x00                         ; Reserved, must be zero
+    
+    ; The Loader flags field would normally be here, but since UEFI ignores it, we use it to store the hexadecimal prefix '0x'
+    ; This would be useful for when we want to print out hexadecimal numbers
+    .HEX_PREFIX:                 db __utf16__ `0x`
+    
+    ;.LOADER_FLAGS:               dd 0x00                         ; Reserved, must be zero
+    
     .NUMBER_OF_RVA_AND_SIZES:    dd 0x10                         ; Number of entries in the data directory
 
     ; The Data directories would normally follow but UEFI does not use them. This gives us another 128 bytes we can use here.
     DATA_DIRECTORIES:
-
-        .EFI_IMAGE_HANDLE                 dq 0                     ; Image handle will be passed to us in RCX
-        .EFI_SYSTEM_TABLE                 dq 0                     ; System table will be passed to us in RDX
-        .OutputString                     dq 0                     ; Pointer to the output string function
-        .ClearString                      dq 0                     ; Pointer to the clear screen function
-
-        times 32 - ($ - DATA_DIRECTORIES) db 0                     ; Pad up to the Security Data Directory entry
+        .HEX_DIGITS:             db __utf16__ `0123456789ABCDEF`  ; The hex digits for when we want to print hexadecimal numbers
+            times 32 - ($ - DATA_DIRECTORIES) db 0                 ; Pad up to the Security Data Directory entry
 
         .SECURITY:
             times 8 db 0                                           ; Pad with zeros for now. We'll use proper values when we're ready for secure boot
@@ -144,7 +145,6 @@ OPTIONAL_HEADER_START:
 
     ; DATA_DIRECTORIES:    times 16 dq 0
 
-    
 OPTIONAL_HEADER_END:
 
 SECTION_HEADERS:
@@ -191,8 +191,15 @@ CODE:
     ; jmp $
     ; ret
 
+
+DATA:
+align 8
+    .EFI_IMAGE_HANDLE                 dq 0                     ; Image handle will be passed to us in RCX
+    .EFI_SYSTEM_TABLE                 dq 0                     ; System table will be passed to us in RDX
+    .OutputString                     dq 0                     ; Pointer to the output string function
+    .ClearString                      dq 0                     ; Pointer to the clear screen function
+
 times 4096 - ($ - START) db 0x00                      ; Pad up to 4kb
-; HEADER_END:
 END:
 
 %include "eficonstants.asm"
