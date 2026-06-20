@@ -36,12 +36,11 @@ STANDARD_HEADER:
             lea rbp, [DATA.EFI_IMAGE_HANDLE]                    ; We're going to store the efi image handle
             mov [rbp], rcx                                      ; Store the efi image handle
             mov [rbp + 8], rdx                                  ; Store the system table
-            ; mov [rbx], rdx                                      ; Store the pointer to the system table
 
             ; Point to the simple text output protocol and also save it
             add rdx, EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL 
             mov rdx, [rdx]
-            push rdx                                                ; Preserve Simple Text Output Protocol on the stack
+            push rdx                                                  ; Preserve Simple Text Output Protocol on the stack
             mov [rbp + 16], rdx                                       ; Store the Simple Text Output Protocol
 
             ; Store the pointer to clear screen
@@ -52,17 +51,12 @@ STANDARD_HEADER:
             mov rax, [rdx + EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_OutputString]
             mov [rbp + 32], rax
 
-            ;add rbx, 8
-            ;mov [rbx], rdx                                           ; Store the Simple Text Output Protocol
+            mov rcx, rdx                                              ; First parameter to output string is the simple text output protocol
 
-            mov rcx, rdx                                              ; Killing 2 birds with 1 stone. This happens to be the first parameter for Output String
-
-            ; Point to the Output string function and save it.
-            ; add rdx, EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_OutputString   ; Preparing to make a call to OutputString
+            ; Get ready to call OutputString
             mov rbx, [rdx + EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_OutputString]
 
-            ; Print the second part of the installer's boot message and continue from there
-            jmp DATA_DIRECTORIES.pre_start_continue                 ; Jump to the rest of the pre-start code
+            jmp DATA_DIRECTORIES.pre_start_continue                   ; Jump to the rest of the pre-start code
 
         times 60 - ($ - STANDARD_HEADER) db 0                                                        ; Pad the DOS stub up to 60 bytes
     
@@ -129,13 +123,13 @@ OPTIONAL_HEADER_START:
     ; This would be useful for when we want to print out hexadecimal numbers
     .HEX_PREFIX:                 db __utf16__ `0x`
     
-    ;.LOADER_FLAGS:               dd 0x00                         ; Reserved, must be zero
+    ;.LOADER_FLAGS:               dd 0x00                          ; Reserved, must be zero
     
-    .NUMBER_OF_RVA_AND_SIZES:    dd 0x10                         ; Number of entries in the data directory
+    .NUMBER_OF_RVA_AND_SIZES:    dd 0x10                           ; Number of entries in the data directory
 
     ; The Data directories would normally follow but UEFI does not use them. This gives us another 128 bytes we can use here.
     DATA_DIRECTORIES:
-        .HEX_DIGITS:             db __utf16__ `0123456789ABCDEF`  ; The hex digits for when we want to print hexadecimal numbers
+        .HEX_DIGITS:             db __utf16__ `0123456789ABCDEF`   ; The hex digits for when we want to print hexadecimal numbers
             times 32 - ($ - DATA_DIRECTORIES) db 0                 ; Pad up to the Security Data Directory entry
 
         .SECURITY:
@@ -155,6 +149,7 @@ OPTIONAL_HEADER_START:
             call rbx
             add rsp, 32
 
+            pop rbp
             pop rbx
             jmp $
 
@@ -189,7 +184,7 @@ align 8
     .EFI_IMAGE_HANDLE                 dq 0                     ; Image handle will be passed to us in RCX
     .EFI_SYSTEM_TABLE                 dq 0                     ; System table will be passed to us in RDX
     .EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL  dq 0                     ; The simple text output protocol
-    .ClearString                      dq 0                     ; Pointer to the clear screen function
+    .ClearScreen                      dq 0                     ; Pointer to the clear screen function
     .OutputString                     dq 0                     ; Pointer to the output string function
 
 times 4096 - ($ - START) db 0x00                      ; Pad up to 4kb
