@@ -28,25 +28,38 @@ STANDARD_HEADER:
         
         ; A DOS stub should normally be here but uefi doesn't need it, so this will be filled
         ; with something a bit more useful.
-        .pre_start: 
+        .pre_start:
+            ; We begin by extracting all the information that we need and storing them.
             push rbx
-            lea rbx, [DATA.EFI_IMAGE_HANDLE]                    ; We're going to store the efi image handle
-            mov [rbx], rcx                                      ; Store the efi image handle
-            add rbx, 8                                          ; Point to the memory address to store the system table
-            mov [rbx], rdx                                      ; Store the pointer to the system table
+            push rbp
 
-            ; Point to the simple text output protocol
+            lea rbp, [DATA.EFI_IMAGE_HANDLE]                    ; We're going to store the efi image handle
+            mov [rbp], rcx                                      ; Store the efi image handle
+            mov [rbp + 8], rdx                                  ; Store the system table
+            ; mov [rbx], rdx                                      ; Store the pointer to the system table
+
+            ; Point to the simple text output protocol and also save it
             add rdx, EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL 
             mov rdx, [rdx]
-            push rdx                                            ; Preserve Simple Text Output Protocol on the stack
-            mov rcx, rdx                                        ; Killing 2 birds with 1 stone. This happens to be the first parameter for Output String
-            add rdx, EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_OutputString   ; Preparing to make a call to OutputString
-            mov rbx, [rdx]
+            push rdx                                                ; Preserve Simple Text Output Protocol on the stack
+            mov [rbp + 16], rdx                                       ; Store the Simple Text Output Protocol
 
-            lea rdx, [OPTIONAL_HEADER_START.BOOT_MESSAGE]           ; Print the first part of the installer's boot message
-            sub rsp, 32
-            call rbx
-            add rsp, 32
+            ; Store the pointer to clear screen
+            mov rax, [rdx + EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_ClearScreen]
+            mov [rbp + 24], rax
+
+            ; Store the pointer to Output string
+            mov rax, [rdx + EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_OutputString]
+            mov [rbp + 32], rax
+
+            ;add rbx, 8
+            ;mov [rbx], rdx                                           ; Store the Simple Text Output Protocol
+
+            mov rcx, rdx                                              ; Killing 2 birds with 1 stone. This happens to be the first parameter for Output String
+
+            ; Point to the Output string function and save it.
+            ; add rdx, EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_OutputString   ; Preparing to make a call to OutputString
+            mov rbx, [rdx + EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_OutputString]
 
             ; Print the second part of the installer's boot message and continue from there
             jmp DATA_DIRECTORIES.pre_start_continue                 ; Jump to the rest of the pre-start code
@@ -54,7 +67,6 @@ STANDARD_HEADER:
         times 60 - ($ - STANDARD_HEADER) db 0                                                        ; Pad the DOS stub up to 60 bytes
     
     .SIGNATURE_POINTER:          dd .PE_SIGNATURE - START                                            ; Points at the PE Signature
-    ; .DOS_ALIGNMENT:            dw 0x00                                                             ; This is just to make the PE below align on a 4-byte boundary
     .PE_SIGNATURE:               db 'PE', 0x00, 0x00                                                 ; This is the pe signature. The characters 'PE' followed by 2 null bytes
     .MACHINE_TYPE:               dw 0x8664                                                           ; Targetting the x64 machine
     .NUMBER_OF_SECTIONS:         dw 1                                                                ; Number of sections. Indicates size of section table that immediately follows the headers
@@ -65,7 +77,7 @@ STANDARD_HEADER:
     .CHARACTERISTICS:            dw 0b0010111000100011                                               ; These are the attributes of the file
 
 OPTIONAL_HEADER_START:
-    .MAGIC_NUMBER:               dw 0x020B                       ; PE32+ (i.e. pe64) magic number
+    .MAGIC_NUMBER:               dw 0x020B                        ; PE32+ (i.e. pe64) magic number
 
     ; The major linker version and the minor linker version would normally follow. Use these to store the major and minor e6os specification version
     ; that this installer targets
@@ -132,7 +144,12 @@ OPTIONAL_HEADER_START:
             times 8 db 0                                           ; Putting this here to ensure it's zeros
 
         .pre_start_continue:
+            lea rdx, [OPTIONAL_HEADER_START.BOOT_MESSAGE]             ; Print the first part of the installer's boot message
+            sub rsp, 32
+            call rbx
+            add rsp, 32
             pop rcx
+
             lea rdx, [OPTIONAL_HEADER_START.BOOT_MESSAGE_CONT]
             sub rsp, 32
             call rbx
@@ -162,42 +179,18 @@ SECTION_HEADERS:
 HEADER_END:
 
 CODE:
-    EntryPoint:
-        call STANDARD_HEADER.pre_start
-        mov rax, 0x00
-        ret
-
-
-    ; Save the Image handle and the system table pointer as soon as we receive them
-;     lea rbx, [START]
-;     mov [rbx + IMAGE_HANDLE_OFFSET], rcx
-;     mov [rbx + SYSTEM_TABLE_OFFSET], rdx
-; 
-;     ; Point to the EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL
-;     add rdx, EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL
-;     mov rdx, [rdx]
-; 
-;     mov rcx, rdx
-; 
-;     add rdx, EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_OutputString
-;     mov rax, [rdx]
-;     lea rdx, [OPTIONAL_HEADER_START.BOOT_MESSAGE]    ; The boot message. We're going to print it.
-; 
-;     sub rsp, 40                 ; Make room on the stack along with the shadow space
-;     call rax
-;     add rsp, 40                 ; Restore rsp
-;     mov rax, EFI_SUCCESS         ; UEFI use rax = 0 for success
-
-    ; jmp $
-    ; ret
-
+EntryPoint:
+    call STANDARD_HEADER.pre_start
+    mov rax, 0x00
+    ret
 
 DATA:
 align 8
     .EFI_IMAGE_HANDLE                 dq 0                     ; Image handle will be passed to us in RCX
     .EFI_SYSTEM_TABLE                 dq 0                     ; System table will be passed to us in RDX
-    .OutputString                     dq 0                     ; Pointer to the output string function
+    .EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL  dq 0                     ; The simple text output protocol
     .ClearString                      dq 0                     ; Pointer to the clear screen function
+    .OutputString                     dq 0                     ; Pointer to the output string function
 
 times 4096 - ($ - START) db 0x00                      ; Pad up to 4kb
 END:
