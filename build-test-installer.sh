@@ -1,3 +1,5 @@
+set -euo pipefail
+
 # Build the installer
 nasm -f bin INSTALL.asm -o INSTALL.EFI
 

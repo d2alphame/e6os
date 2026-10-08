@@ -112,7 +112,7 @@ OPTIONAL_HEADER_START:
     ; UEFI doesn't use the following fields: stack size to reserve, stack size to commit, heap size to reserve, and heap size to commit. At 8 bytes each, this gives
     ; us 32 bytes we can use.
     .BOOT_MESSAGE_CONT:              db __utf16__ `0 INSTALLER\r\n\0`  ; Continuation of the installer boot message
-        times 32 - ($ - .BOOT_MESSAGE_CONT) db 0                     ; Padd with zeros up to 32 bytes
+        times 32 - ($ - .BOOT_MESSAGE_CONT) db 0                       ; Padd with zeros up to 32 bytes
 
     ; .STACK_RESERVE_SIZE:         dq 0x200000                     ; Reserve 2MB for the stack... I guess...
     ; .STACK_COMMIT_SIZE:          dq 0x1000                       ; Commit 4kb of the stack
@@ -151,6 +151,8 @@ OPTIONAL_HEADER_START:
 
             pop rbp
             pop rbx
+
+            ret
             jmp $
 
         times 128 - ($ - DATA_DIRECTORIES) db 0                    ; Pad up the data directory entries up to 128 bytes
