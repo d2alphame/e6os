@@ -1,20 +1,22 @@
 This file describes the ABI of e6os.
 
-See the CallConvention.txt file for call conventions.
+See the CallConvention.txt file for the calling convention rules and register usage.
 
-All e6 programs are 64 bits and are loaded at address 0x400000 (that's the 4MB mark)
-So programs begin with the following 2 lines (in nasm)
+General ABI rules
+
+All e6 programs are 64-bit and are loaded at address 0x400000 (the 4MB boundary).
+Programs begin with the following two directives in NASM:
 
 BITS 64
 Org 0x400000
 
-Writing programs for e6os.
+The e6 kernel searches the first 65,536 bytes of the executable for the e6 program header.
+The header is 32 bytes long and must remain entirely in that region.
 
-E6 searches the first 65,536 bytes for the E6 program header. The header is 32-bytes
-and must be contained entirely within the first 65,536 bytes of the file.
+Program header format
 
-The search begins by looking for the magic signature 'E6BINARY' which must be 8-byte aligned.
-After the e6 signature, the following structure must follow:
+The search begins by looking for the magic signature 'E6BINARY', which must be 8-byte aligned.
+After the signature, the following structure must follow:
 
 Entry Point Offset (4 bytes)
 Flags (2 bytes)
@@ -23,23 +25,82 @@ E6 Minor Version (1 byte)
 Reserved for future use (8 bytes)
 Xor Checksum (8 bytes)
 
-The entire header structure including the signature makes 32 bytes. All 32 bytes must be contained
-withing the first 65,536 bytes of the file and must be 8-byte aligned. The following is the header
-format in full:
+The whole header including the 8-byte magic signature therefore occupies 32 bytes.
+All 32 bytes must be fully contained in the first 65,536 bytes and must remain 8-byte aligned.
 
 Offset | Name          | Size    | Description
-===========================================================================================================================================================
-+0     | E6 Magic      | 8 bytes | The string of characters 'E6BINARY'. This is how e6 knows it's an e6 executable.
-+8     | Entry Point   | 4 bytes | Relative offset of the entry point. E6 calculates the actual address and jumps to it to starting executing your program.
-+12    | Flags         | 2 bytes | Program flags. See below for explanation of the flags.
-+14    | Major Version | 1 byte  | Major version of the e6 os that the program targets.
-+15    | Minor Version | 1 byte  | Minor version of the e6 os that the program targets.
+=================================================================================================================================
++0     | E6 Magic      | 8 bytes | The string 'E6BINARY'. This is how e6 identifies an e6 executable.
++8     | Entry Point   | 4 bytes | Relative offset of the entry point. The kernel calculates the actual address and jumps to it.
++12    | Flags         | 2 bytes | Program flags. See the flags table below.
++14    | Major Version | 1 byte  | Major version of the e6 OS the program targets.
++15    | Minor Version | 1 byte  | Minor version of the e6 OS the program targets.
 +16    | Reserved      | 8 bytes | Reserved for future use.
-+24    | Xor Checksum  | 8 bytes | Simple xor checksum of this header. See below for explanation.
-============================================================================================================================================================
++24    | Xor Checksum  | 8 bytes | Simple XOR checksum of the header.
+=================================================================================================================================
 
-Flags.
+Flags
+
 Bit     | Name                                                        | Description
-0       | Check checksum 1 = check checksum, 0 = don't check checksum | If the checksum is checked and fails, the program will not load. Sometimes it's ok to not check the checksum, for example if you are still developing your program and want to test it without having to recalculate the checksum every time you make a change.
-1       | Check version 1 = check version, 0 = don't check version    | E6 checks the version if this bit is set. If the version is checked, the major version must match that of the e6 version on which the program would run. Sometimes it's ok to not set this.
-2 to 15 | Reserved for future use                                     | These bits are reserved for future use. They must be set to 0.
+0       | Check checksum 1 = check checksum, 0 = don't check checksum | If checked and the checksum fails, the program does not load.
+1       | Check version 1 = check version, 0 = don't check version    | If set, e6 compares the program version against the OS version.
+2 to 15 | Reserved for future use                                     | These bits must be set to 0.
+
+ABI-level invariants
+
+1. The ABI is 64-bit and address-sized values are 64 bits.
+2. Pointers and addresses are stored in 64-bit registers and are treated as values with 8-byte alignment where appropriate.
+3. Buffers, arrays, records, and structs are passed by reference unless otherwise documented for a specific API.
+4. Strings are encoded as byte sequences and may be length-delimited, null-terminated, or value-terminated depending on the API contract.
+5. Numeric values use standard 8/16/32/64-bit integer widths, with signed variants where explicitly required.
+6. The kernel or user code may rely on the calling convention only when both sides obey the same ABI rules.
+
+Register usage summary
+
+The following rules are required by the ABI and are enforced by the calling convention:
+
+Volatile registers:
+RAX, RBX, RCX, RDX, RSI, RDI, RBP
+These registers may be changed by the callee and are not required to retain values across a call.
+
+Preserved registers:
+R8-R15
+The callee must preserve these values across a call.
+
+Stack:
+RSP must be preserved by the callee. The stack is used for nested calls and temporary working space.
+A call may temporarily adjust RSP, but it must restore it before returning.
+
+Error reporting:
+When an operation fails, the carry flag is set, RAX contains the error code, and RSI points to the error string.
+On success the carry flag is cleared.
+
+Buffer and pointer conventions
+
+1. A pointer is a 64-bit address.
+2. A buffer is a region of memory with a known length or an address plus a length pair.
+3. Arrays and structs are treated as buffers and are passed via pointer-like locations in the register set.
+4. When a function needs to return more values than can fit in the standard register slots, all excess data is placed in a buffer referenced by the ABI register designated for buffers.
+5. The caller is responsible for providing valid memory ranges for pointers and buffers.
+
+Stack discipline and call frames
+
+1. The stack grows downward.
+2. The caller may place temporary inputs or scratch data on the stack when required by the ABI.
+3. The callee may use stack space for local temporaries, but must restore RSP before returning.
+4. Any stack frame layout used by a callee must be consistent with the declared calling convention for that API.
+5. A callee must not assume that a caller-provided stack location remains valid after the call unless it is explicitly documented to do so.
+
+Versioning and compatibility
+
+1. The program header contains version information so the kernel can reject incompatible binaries.
+2. If the version-check flag is set, the major and minor version numbers must match the target e6 version.
+3. Future ABI changes should be introduced with a new version, not by silently changing the meaning of existing registers or flags.
+4. Reserved bits and reserved areas must be zeroed unless the implementation explicitly documents a future use.
+
+Checksum rules
+
+The header checksum is a simple XOR checksum over the header fields. The exact layout is intentionally simple so it can be validated without a complex runtime library.
+If the checksum check is enabled and the value does not match, the kernel must reject the executable before entry.
+
+This ABI is intentionally minimal and optimized for a small custom operating system, but it should remain versioned and explicit so future changes do not silently break compatibility.

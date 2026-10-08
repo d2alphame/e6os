@@ -1,52 +1,89 @@
 The Calling Convention of e6
 
-When making a call
-1.	First number goes into RAX, second number goes into RDX.
-2.	First string goes into RSI, second string goes into RDI.
-3.	First buffer goes into RBX, second buffer goes into RBP.
-4.  Parameters for counting, lengths, or sizes go into RCX. 
-5.	If there are too many of a given parameter type, then pass all parameters in a buffer pointed to in RBX.
-6.	When there is an error, the carry flag is set, RAX contains the error code and RSI points to the error string. RDX may contain a number that represents other kind of information.
-7.	The carry flag is cleared on success.
-8.	RAX, RBX, RCX, RDX, RSI, RDI, and RBP are volatile. The callee may change them.
-9.	R8 - R15 are preserved across calls. The callee must preserve these.
-10.	RSP must be preserved by the callee.
-11.	The stack is used for making calls and as temporary working space.
-12.	Arrays and structs/records are treated as buffers so they are passed in RBX/RBP.
+This document defines the e6 ABI calling convention used for function calls and return values.
+It complements the ABI definition in ABI.txt and should be treated as the normative contract for how parameters and return values are encoded.
 
-When returning from a call
-1.	Returning from a call works the same way as making a call. Return the first number in RAX, the second number in RDX.
-2.  Use RCX to return counting values, e.g. number of bytes in a buffer or length of a string.
-3.	Return first string in RSI and second string in RDI.
-4.	Return the first buffer in RBX and the second in RBP.
-5.	If there are too many return values of a given type, return all values in a buffer pointed to by RBX.
-6.	On error, set the carry flag, put the error code in RAX and the error string in RSI.
-7.	Clear the carry flag on success
-8.	RAX, RBX, RCX, RDX, RSI, RDI, and RBP are volatile. These registers may be used as the programmer sees fit.
-9.	R8-R15 must be preserved.
-10.	RSP must be preserved.
-11.	The stack is used as local working space and for making calls.
+General rules
 
-Data types.
+1. Integer values are passed according to type category.
+2. A caller may use the stack for temporary spill space, but must not rely on stack contents remaining valid after the call unless that behavior is explicitly documented.
+3. The callee may use the stack for local working space, but must restore RSP before returning.
+4. The carry flag is reserved for error signaling.
+5. A function may freely overwrite any volatile register, but must preserve all non-volatile registers.
+
+Parameter passing
+
+When making a call:
+1. First number goes into RAX.
+2. Second number goes into RDX.
+3. First string goes into RSI.
+4. Second string goes into RDI.
+5. First buffer goes into RBX.
+6. Second buffer goes into RBP.
+7. Count, length, and size values go into RCX.
+8. If there are too many parameters of a given type, then all parameters of that type are placed into a memory buffer pointed to by RBX.
+9. In that case, the register-passed value(s) are either omitted or replaced by the pointer to that data buffer, depending on the specific API contract.
+10. Arrays and structs/records are treated as buffers and are passed in RBX/RBP.
+
+Return values
+
+When returning from a call:
+1. Return the first number in RAX.
+2. Return the second number in RDX.
+3. Use RCX to return count or length values.
+4. Return the first string in RSI.
+5. Return the second string in RDI.
+6. Return the first buffer in RBX.
+7. Return the second buffer in RBP.
+8. If there are too many return values of a given type, then all values of that type are placed into a memory buffer pointed to by RBX.
+9. On success, clear the carry flag.
+10. On error, set the carry flag, place the error code in RAX, and place the error string in RSI.
+
+Register preservation rules
+
+Registers that are volatile and may be clobbered by the callee:
+RAX, RBX, RCX, RDX, RSI, RDI, RBP
+
+Registers that must be preserved across calls:
+R8-R15
+
+The callee must also preserve the stack pointer:
+RSP must be restored before returning.
+
+The stack is used for nested calls and temporary working space. A callee may push and pop data as needed, but the final RSP value on return must match the caller's expectation.
+
+Data types
 
 1. Strings
-Tiny string: A string whose length fits in single byte, i.e. of length 0 to 255 bytes
-Small string: A string whose length fits in 2 bytes, i.e. of length 0 to 65545 bytes
-Big string: A string whose length fits in 4 bytes, i.e. of length 65,536 to 4,294,967,296 bytes
-Huge string: A string whose length is greater 4,294,967,296 bytes.
-RCX string: A string whose length is specified in RCX.
-Null-terminated string: A string terminated by null.
-Value-terminated string: A string terminated by a specified value.
+Tiny string: a length-prefixed string whose length fits in a single byte, i.e. 0 to 255 bytes
+Small string: a length-prefixed string whose length fits in 2 bytes, i.e. 0 to 65535 bytes
+Big string: a length-prefixed string whose length fits in 4 bytes, i.e. 0 to 4,294,967,295 bytes
+Huge string: a length-prefixed string whose length exceeds 4,294,967,295 bytes
+RCX string: a string whose length is supplied in RCX
+Null-terminated string: terminated by 0
+Value-terminated string: terminated by a specific delimiter value
+
+Length-prefix rule:
+For tiny, small, and big strings, the string payload is preceded by a length field in the corresponding width (1, 2, or 4 bytes). The full value stored in the register or buffer is therefore the length-prefixed representation, not just the raw bytes.
 
 2. Numbers
-Byte: An 8-bit unsigned, number
-Signed byte: An 8-bit signed, number
-Word: A 16-bit unsigned, number
-Signed word: A 16-bit, signed number
-Double word: A 32-bit, unsigned number
-Signed double word: A 32-bit, signed number
-Quad word: A 64-bit, unsigned number
-Signed quad word: A 64-bit, signed number
+Byte: 8-bit unsigned
+Signed byte: 8-bit signed
+Word: 16-bit unsigned
+Signed word: 16-bit signed
+Double word: 32-bit unsigned
+Signed double word: 32-bit signed
+Quad word: 64-bit unsigned
+Signed quad word: 64-bit signed
 
-Others:
-Arrays and buffers.
+3. Other values
+Arrays and buffers are passed as memory regions and are treated like pointer-based values.
+Structs and records are treated as buffers and are passed in the same way as arrays.
+
+ABI compatibility notes
+
+1. The ABI is intentionally custom and minimal.
+2. All code on the system must agree on the same calling convention.
+3. A future ABI change must be versioned and documented in the header and in the calling convention notes.
+4. Reserved bits, reserved registers, and reserved stack slots must not be reused silently without a documented ABI revision.
+5. The kernel, user programs, and any toolchain or runtime must agree on the same rules for pointer, string, and buffer semantics.
