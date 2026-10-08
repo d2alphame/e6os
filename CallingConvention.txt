@@ -6,7 +6,7 @@ It should be noted that all multi-byte values are little endian.
 
 General rules
 
-1. Integer values are passed according to type category.
+1. Integer values are passed according to type category. If more than the designated register slots are needed for a single category, then all values of that category are packed into a contiguous memory buffer and the pointer to that buffer is passed in RBX. This applies to both parameters and return values, and the values appear in the same relative order they were supplied or returned.
 2. A caller may use the stack for temporary spill space, but must not rely on stack contents remaining valid after the call unless that behavior is explicitly documented.
 3. The callee may use the stack for local working space, but must restore RSP before returning.
 4. The carry flag is reserved for error signaling.
@@ -65,7 +65,7 @@ Null-terminated string: terminated by 0
 Value-terminated string: terminated by a specific delimiter value
 
 Length-prefix rule:
-For tiny, small, and big strings, the string payload is preceded by a length field in the corresponding width (1, 2, or 4 bytes). The full value stored in the register or buffer is therefore the length-prefixed representation, not just the raw bytes.
+For tiny, small, big, and huge strings, the string payload is preceded by a length field in the corresponding width (1, 2, or 4 bytes). The full value stored in the register or buffer is therefore the length-prefixed representation, not just the raw bytes.
 
 2. Numbers
 Byte: 8-bit unsigned
