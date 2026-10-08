@@ -14,3 +14,20 @@ The following outlines steps the installer needs to take when installing e6os.
 9. If no, format the storage device and install OS files.
 10. Restart, ask user to restart
 11. E6os is ready to run from the computer
+
+
+## Thu, 08-Oct-2026
+
+To install the e6 operating system, the user carries out the following steps:
+
+1. Get an external storage device such as a usb flash stick, ssd disk, or external hard drive.
+
+2. Use GPT partitioning scheme to partition the storage device. This step can be skipped if the external storage already has this.
+
+3. Create a FAT32 system partition (UEFI uses FAT32 to boot). Mark the partition as the EFI System Partition (ESP).
+
+4. Copy the installer files on to the ESP partition.
+
+5. Boot the system from that external storage device.
+
+6. The e6os installer starts up and runs. Follow the installer steps to install e6os on the target system.

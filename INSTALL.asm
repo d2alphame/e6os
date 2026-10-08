@@ -154,6 +154,9 @@ OPTIONAL_HEADER_START:
             pop rbp
             pop rbx
 
+            ; Enumerate storage devices. This lists out all storage devices available on the system
+            ; 
+
             ret
 
         times 128 - ($ - DATA_DIRECTORIES) db 0                    ; Pad up the data directory entries up to 128 bytes
