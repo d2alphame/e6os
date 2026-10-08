@@ -40,6 +40,11 @@ When returning from a call:
 9. On success, clear the carry flag.
 10. On error, set the carry flag, place the error code in RAX, and place the error string in RSI.
 
+Other things to note
+
+1. Return buffers are owned by the caller. So when a callee returns a buffer, it is the caller's responsibility to prepare the buffer and also to make the first thing in the buffer its size in bytes.
+2. The first item in every buffer is the always the size of the buffer in bytes.
+
 Register preservation rules
 
 Registers that are volatile and may be clobbered by the callee:
@@ -65,7 +70,7 @@ Null-terminated string: terminated by 0
 Value-terminated string: terminated by a specific delimiter value
 
 Length-prefix rule:
-For tiny, small, big, and huge strings, the string payload is preceded by a length field in the corresponding width (1, 2, or 4 bytes). The full value stored in the register or buffer is therefore the length-prefixed representation, not just the raw bytes.
+For tiny, small, big, and huge strings, the string payload is preceded by a length field in the corresponding width (1, 2, 4, or 8 bytes). The full value stored in the register or buffer is therefore the length-prefixed representation, not just the raw bytes.
 
 2. Numbers
 Byte: 8-bit unsigned
