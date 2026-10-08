@@ -9,7 +9,7 @@ When making a call
 6.	When there is an error, the carry flag is set, RAX contains the error code and RSI points to the error string. RDX may contain a number that represents other kind of information.
 7.	The carry flag is cleared on success.
 8.	RAX, RBX, RCX, RDX, RSI, RDI, and RBP are volatile. The callee may change them.
-9.	R8 - R15 are preserved across calls. The callee must preserve these
+9.	R8 - R15 are preserved across calls. The callee must preserve these.
 10.	RSP must be preserved by the callee.
 11.	The stack is used for making calls and as temporary working space.
 12.	Arrays and structs/records are treated as buffers so they are passed in RBX/RBP.

@@ -1,10 +1,45 @@
 This file describes the ABI of e6os.
 
-All e6 programs are 64 bits and are loaded at address 0x200000 (that's the 2MB mark)
+See the CallConvention.txt file for call conventions.
+
+All e6 programs are 64 bits and are loaded at address 0x400000 (that's the 4MB mark)
 So programs begin with the following 2 lines (in nasm)
 
 BITS 64
-Org 0x200000
+Org 0x400000
 
-This address (0x200000) is also passed to the program in rbx.
-rsi points to the literal string with which the program was called.
+Writing programs for e6os.
+
+E6 searches the first 65,536 bytes for the E6 program header. The header is 32-bytes
+and must be contained entirely within the first 65,536 bytes of the file.
+
+The search begins by looking for the magic signature 'E6BINARY' which must be 8-byte aligned.
+After the e6 signature, the following structure must follow:
+
+Entry Point Offset (4 bytes)
+Flags (2 bytes)
+E6 Major Version (1 byte)
+E6 Minor Version (1 byte)
+Reserved for future use (8 bytes)
+Xor Checksum (8 bytes)
+
+The entire header structure including the signature makes 32 bytes. All 32 bytes must be contained
+withing the first 65,536 bytes of the file and must be 8-byte aligned. The following is the header
+format in full:
+
+Offset | Name          | Size    | Description
+===========================================================================================================================================================
++0     | E6 Magic      | 8 bytes | The string of characters 'E6BINARY'. This is how e6 knows it's an e6 executable.
++8     | Entry Point   | 4 bytes | Relative offset of the entry point. E6 calculates the actual address and jumps to it to starting executing your program.
++12    | Flags         | 2 bytes | Program flags. See below for explanation of the flags.
++14    | Major Version | 1 byte  | Major version of the e6 os that the program targets.
++15    | Minor Version | 1 byte  | Minor version of the e6 os that the program targets.
++16    | Reserved      | 8 bytes | Reserved for future use.
++24    | Xor Checksum  | 8 bytes | Simple xor checksum of this header. See below for explanation.
+============================================================================================================================================================
+
+Flags.
+Bit     | Name                                                        | Description
+0       | Check checksum 1 = check checksum, 0 = don't check checksum | If the checksum is checked and fails, the program will not load. Sometimes it's ok to not check the checksum, for example if you are still developing your program and want to test it without having to recalculate the checksum every time you make a change.
+1       | Check version 1 = check version, 0 = don't check version    | E6 checks the version if this bit is set. If the version is checked, the major version must match that of the e6 version on which the program would run. Sometimes it's ok to not set this.
+2 to 15 | Reserved for future use                                     | These bits are reserved for future use. They must be set to 0.
