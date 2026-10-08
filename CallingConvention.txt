@@ -2,6 +2,7 @@ The Calling Convention of e6
 
 This document defines the e6 ABI calling convention used for function calls and return values.
 It complements the ABI definition in ABI.txt and should be treated as the normative contract for how parameters and return values are encoded.
+It should be noted that all multi-byte values are little endian.
 
 General rules
 
