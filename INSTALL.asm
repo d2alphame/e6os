@@ -30,6 +30,7 @@ STANDARD_HEADER:
         ; with something a bit more useful.
         .pre_start:
             ; We begin by extracting all the information that we need and storing them.
+            ; Begin by preserving the following 2 registers
             push rbx
             push rbp
 
@@ -149,11 +150,11 @@ OPTIONAL_HEADER_START:
             call rbx
             add rsp, 32
 
+            ; Restore the 2 registers we preserved earlier
             pop rbp
             pop rbx
 
             ret
-            jmp $
 
         times 128 - ($ - DATA_DIRECTORIES) db 0                    ; Pad up the data directory entries up to 128 bytes
 
