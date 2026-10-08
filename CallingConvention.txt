@@ -6,11 +6,10 @@ It should be noted that all multi-byte values are little endian.
 
 General rules
 
-1. Integer values are passed according to type category. If more than the designated register slots are needed for a single category, then all values of that category are packed into a contiguous memory buffer and the pointer to that buffer is passed in RBX. This applies to both parameters and return values, and the values appear in the same relative order they were supplied or returned.
-2. A caller may use the stack for temporary spill space, but must not rely on stack contents remaining valid after the call unless that behavior is explicitly documented.
-3. The callee may use the stack for local working space, but must restore RSP before returning.
-4. The carry flag is reserved for error signaling.
-5. A function may freely overwrite any volatile register, but must preserve all non-volatile registers.
+1. Values are passed according to type category. If more than the designated register slots are needed for a single category, then all values (return values/parameters) are placed into a buffer and the pointer to that buffer is passed in RBX. This applies to both parameters and return values, and the values appear in the same relative order they were supplied or returned.
+2. The callee may use the stack for local working space, but must restore RSP before returning.
+3. The carry flag is reserved for error signaling.
+4. A function may freely overwrite any volatile register, but must preserve all non-volatile registers.
 
 Parameter passing
 
@@ -22,9 +21,10 @@ When making a call:
 5. First buffer goes into RBX.
 6. Second buffer goes into RBP.
 7. Count, length, and size values go into RCX.
-8. If there are too many parameters of a given type, then all parameters of that type are placed into a memory buffer pointed to by RBX.
+8. If there are too many parameters of a given type, then all parameters are placed into a memory buffer pointed to by RBX.
 9. In that case, the register-passed value(s) are either omitted or replaced by the pointer to that data buffer, depending on the specific API contract.
 10. Arrays and structs/records are treated as buffers and are passed in RBX/RBP.
+11. The caller is advised to not pass buffers on the stack.
 
 Return values
 
@@ -39,11 +39,14 @@ When returning from a call:
 8. If there are too many return values of a given type, then all values of that type are placed into a memory buffer pointed to by RBX.
 9. On success, clear the carry flag.
 10. On error, set the carry flag, place the error code in RAX, and place the error string in RSI.
+11. The callee must **never** manipulate the caller's stack space unless the caller passed a buffer on the stack.
 
 Other things to note
 
 1. Return buffers are owned by the caller. So when a callee returns a buffer, it is the caller's responsibility to prepare the buffer and also to make the first thing in the buffer its size in bytes.
-2. The first item in every buffer is the always the size of the buffer in bytes.
+2. The size of the buffer includes the size field itself.
+3. The first item in every buffer is the always the size of the buffer in bytes.
+4. The buffer is ideally, but not mandatorily, 8-byte aligned. Programmers should check the API contract for any specific alignment requirements.
 
 Register preservation rules
 
@@ -64,7 +67,7 @@ Data types
 Tiny string: a length-prefixed string whose length fits in a single byte, i.e. 0 to 255 bytes
 Small string: a length-prefixed string whose length fits in 2 bytes, i.e. 0 to 65535 bytes
 Big string: a length-prefixed string whose length fits in 4 bytes, i.e. 0 to 4,294,967,295 bytes
-Huge string: a length-prefixed string whose length exceeds 4,294,967,295 bytes
+Huge string: a length-prefixed string whose length fits in 8 bytes, i.e. 0 to 18,446,744,073,709,551,615 bytes
 RCX string: a string whose length is supplied in RCX
 Null-terminated string: terminated by 0
 Value-terminated string: terminated by a specific delimiter value
