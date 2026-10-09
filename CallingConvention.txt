@@ -69,11 +69,23 @@ Small string: a length-prefixed string whose length fits in 2 bytes, i.e. 0 to 6
 Big string: a length-prefixed string whose length fits in 4 bytes, i.e. 0 to 4,294,967,295 bytes
 Huge string: a length-prefixed string whose length fits in 8 bytes, i.e. 0 to 18,446,744,073,709,551,615 bytes
 RCX string: a string whose length is supplied in RCX
-Null-terminated string: terminated by 0
-Value-terminated string: terminated by a specific delimiter value
+Null-terminated string: a string terminated by 0
+Byte-terminated string: a string terminated by a specific delimiter byte value
+DL-terminated string: a string terminated by the value in DL
+Word-terminated string: a string terminated by a specific delimiter word (16 bits) value
+DX-terminated string: a string terminated by the value in DX
 
 Length-prefix rule:
 For tiny, small, big, and huge strings, the string payload is preceded by a length field in the corresponding width (1, 2, 4, or 8 bytes). The full value stored in the register or buffer is therefore the length-prefixed representation, not just the raw bytes.
+Length-prefixed strings are stored in memory as a little-endian integer followed by the string payload. For example, a tiny string "abc" would be stored as 0x03 0x61 0x62 0x63, where 0x03 is the length prefix. The pointer to the string points to the prefixed length, not the payload.
+
+Terminating rule:
+The pointer to a null-terminated string points directly to the first character of the string.
+For byte-terminated and word-terminated strings, prefix the string with the terminating value in the corresponding width and also end or terminate the string with the same value. For example, a byte-terminated string "abc" with a terminating value of 0xFF would be stored as 0xFF 0x61 0x62 0x63 0xFF.
+A pointer to the string points to the prefixed terminating value, not the payload. The terminating value is not included in the string length.
+
+Storing strings in memory:
+Store RCX strings in memory as length-prefixed strings. Store DL/DX-terminated strings in memory as value-terminated strings (see above).
 
 2. Numbers
 Byte: 8-bit unsigned
@@ -88,6 +100,10 @@ Signed quad word: 64-bit signed
 3. Other values
 Arrays and buffers are passed as memory regions and are treated like pointer-based values.
 Structs and records are treated as buffers and are passed in the same way as arrays.
+
+4. Special types of strings
+
+
 
 ABI compatibility notes
 
