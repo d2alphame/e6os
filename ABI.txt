@@ -1,11 +1,11 @@
 This file describes the ABI of e6os.
 
-See the CallConvention.txt file for the calling convention rules and register usage.
+See the CallingConvention.txt file for the calling convention rules and register usage.
 
 General ABI rules
 
-All e6 programs are 64-bit and are loaded at address 0x400000 (the 4MB boundary).
-Programs begin with the following two directives in NASM:
+All e6 programs are 64-bit and are loaded at address 0x400000 (the 4MB boundary). Programs begin with the following two
+directives in NASM:
 
 BITS 64
 Org 0x400000
@@ -103,4 +103,62 @@ Checksum rules
 The header checksum is a simple XOR checksum over the header fields. The exact layout is intentionally simple so it can be validated without a complex runtime library.
 If the checksum check is enabled and the value does not match, the kernel must reject the executable before entry.
 
-This ABI is intentionally minimal and optimized for a small custom operating system, but it should remain versioned and explicit so future changes do not silently break compatibility.
+On entry:
+Upon entry, RBX would contain the final calculated address of the entry point, i.e. 0x400000 + the value at the
+Entry Point Offset field in the header. This is the address e6 jumps to to start executing the program. If, for example,
+the Entry Point Offset is 0x1000, then RBX would contain 0x401000 on entry.
+
+RAX would contain a 64-bit random number. The random is generated using the hardware random number generator (`rdrand`).
+RDX would equal to not RAX (RDX = ~RAX). 
+
+A program can check the above conditions to see if it was loaded by e6os (or at least, by a loader that follows the same
+ABI). For example:
+
+lea rbp, [Header.EntryPointOffset]
+movzx rcx, dword [rbp]
+add rcx, 0x400000
+cmp rcx, rbx
+jne .not_e6os
+
+; Check that RAX and RDX are compliments
+not rdx
+xor rax, rdx
+jnz .not_e6os   ; A non-zero result means they're not compliments
+
+.not_e6os:    ; Do other stuff if we were not loaded by e6. 
+
+The checksum:
+If
+    A xor B xor C = D
+then
+    A xor B xor C xor D = 0
+
+To calculate the checksum field in the header, xor the first 24 bytes of the header taking 8 bytes each, i.e.
+    bytes(0 to 7) xor bytes(8 to 15) xor bytes(16 to 23) = checksum
+
+To check the checksum, xor all 32 bytes of the header including the checksum field. The result should be 0 (see formula
+above). If the result is not 0, the checksum is invalid and the program should not be loaded.
+    bytes(0 to 7) xor bytes(8 to 15) xor bytes(16 to 23) xor bytes(24 to 31) = 0
+
+Here's an example of how to calculate the checksum field in NASM, assuming RSI points to the start of the header:
+xor rdx, rdx
+mov rcx, 3     ; We will process 3 chunks of 8 bytes each
+.calc_checksum_loop:
+    lodsq
+    xor rdx, rax
+    loop .calc_checksum_loop
+; After the loop, rdx now contains the checksum which may be written into the checksum field of the header.
+
+To check that the checksum is valid, again assuming that RSI is already pointing to the header
+xor rdx, rdx
+mov rcx, 4     ; Process 4 chunks of 8 bytes each
+.check_checksum_loop:
+    lodsq
+    xor rdx, rax
+    loop .check_checksum_loop
+
+jnz .bad_checksum  ; If the result is not zero, then the checksum is bad.
+; ...etc
+
+.bad_checksum:
+; ...yada, yada

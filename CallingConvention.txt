@@ -22,9 +22,8 @@ When making a call:
 6. Second buffer goes into RBP.
 7. Count, length, and size values go into RCX.
 8. If there are too many parameters of a given type, then all parameters are placed into a memory buffer pointed to by RBX.
-9. In that case, the register-passed value(s) are either omitted or replaced by the pointer to that data buffer, depending on the specific API contract.
-10. Arrays and structs/records are treated as buffers and are passed in RBX/RBP.
-11. The caller is advised to not pass buffers on the stack.
+9. Arrays and structs/records are treated as buffers and are passed in RBX/RBP.
+10.The caller is advised to not pass buffers on the stack.
 
 Return values
 
@@ -36,17 +35,18 @@ When returning from a call:
 5. Return the second string in RDI.
 6. Return the first buffer in RBX.
 7. Return the second buffer in RBP.
-8. If there are too many return values of a given type, then all values of that type are placed into a memory buffer pointed to by RBX.
+8. If there are too many return values of a given type, then all values are placed into a memory buffer pointed to by RBX.
 9. On success, clear the carry flag.
 10. On error, set the carry flag, place the error code in RAX, and place the error string in RSI.
 11. The callee must **never** manipulate the caller's stack space unless the caller passed a buffer on the stack.
 
 Other things to note
 
-1. Return buffers are owned by the caller. So when a callee returns a buffer, it is the caller's responsibility to prepare the buffer and also to make the first thing in the buffer its size in bytes.
-2. The size of the buffer includes the size field itself.
-3. The first item in every buffer is the always the size of the buffer in bytes.
-4. The buffer is ideally, but not mandatorily, 8-byte aligned. Programmers should check the API contract for any specific alignment requirements.
+1. All buffers begin with an 8-byte size field that indicates the size of the buffer in bytes. The size field is included in the size of the buffer. This means the smallest size of a buffer is 8 and is recorded 0x08 in the first 8 bytes of the buffer.
+2. Return buffers are owned by the caller. So when a callee returns a buffer, it is the caller's responsibility to prepare the buffer and also to make the first thing in the buffer its size in bytes.
+3. The size of the buffer includes the size field itself.
+4. The first item in every buffer is the always the size of the buffer in bytes.
+5. The buffer is ideally, but not mandatorily, 8-byte aligned. Programmers should check the API contract for any specific alignment requirements.
 
 Register preservation rules
 
@@ -101,9 +101,66 @@ Signed quad word: 64-bit signed
 Arrays and buffers are passed as memory regions and are treated like pointer-based values.
 Structs and records are treated as buffers and are passed in the same way as arrays.
 
-4. Special types of strings
+4. Paired strings
+A paired string is a string that is paired with another string. These strings are A/B strings. String B is a Tiny string (see above) and defines characters that may terminate string A. The paired strings or (A/B strings) that are avaialable are:
+- Stop-set strings: Any value in string B may terminate string A.
+- Scan-set strings: Any value not in string B may terminate string A.
+When storing a paired string in memory, store string B as a Tiny string and follow it with the payload of string A. A pointer points to the length prefix of string B.
+To use a paired string in registers, point RSI at string A, and RDI at string B.
 
+5. Range terminated strings
+- In-range terminated strings: A string terminated by a value within a specific range. The bounds of the range are inclusive.
+- Off-range terminated strings: A string terminated by a value outside a specific range.
 
+The low value must be less than or equal to the high value. If it is not, the behavior is undefined.
+
+Storing range terminated strings in memory:
+Prefix the string with the low value and the high value (store the low value first), each 1 byte, in that order. Follow
+them with the payload, then one terminating byte. For example, an in-range terminated string "abc" with the range
+0x00-0x1F, terminated by 0x0A, is stored as 0x00 0x1F 0x61 0x62 0x63 0x0A. An off-range terminated string "abc" with the
+range 0x61-0x7A, terminated by 0x21, is stored as 0x61 0x7A 0x61 0x62 0x63 0x21. A pointer to the string points to the
+prefixed low value, not the payload. The terminating byte is not included in the string, and no payload byte of an
+in-range terminated string may lie within the range (for an off-range terminated string, every payload byte must lie
+within it).
+
+Using range terminated strings in registers:
+Put the low value in DL and the high value in DH. Point RSI or RDI at the string (the first string goes in RSI, the
+second in RDI). Because the range occupies RDX, the second number cannot be passed in a register alongside it; if it is
+needed, pass all parameters in the buffer (see Parameter passing, rule 8).
+
+6. Slice records
+A slice record is a pair of values that refers to a string stored elsewhere: a pointer to the string's payload,
+followed by the size of the string. A slice record is not a buffer. It has no size field of its own and is not passed
+in RBX/RBP.
+
+Layout in memory:
+Offset 0:  Pointer to the first byte of the string's payload (8 bytes)
+Offset 8:  Size of the string in bytes (1, 2, 4, or 8 bytes)
+
+The size is stored in the width the slice record's type calls for:
+Tiny slice: 1-byte size, 0 to 255
+Small slice: 2-byte size, 0 to 65535
+Big slice: 4-byte size, 0 to 4,294,967,295
+Huge slice: 8-byte size, 0 to 18,446,744,073,709,551,615
+
+The pointer points to the payload, not to a length prefix, and the size does not include any prefix. A pointer to a
+slice record points to the first byte of the pointer field.
+
+Using slice records in registers:
+Load the pointer to the payload into RSI or RDI (the first slice in RSI, the second in RDI) and the size into RCX,
+zero-extended to 64 bits.
+
+7. Fixed-width strings
+A fixed-width string is a string that always occupies exactly N bytes. A string shorter than N is padded with a padding
+character up to N bytes, after the last character.
+
+The width N and the padding character are not part of the value. The API contract of the function defines both.
+A fixed-width string is passed and stored as N bytes of payload with no prefix. A pointer to the string points to the
+first payload byte, in memory and in registers (the first string in RSI, the second in RDI).
+
+The content of the string is the payload with all trailing padding characters removed, so the content cannot end with
+the padding character. A string of exactly N bytes has no padding. A string longer than N cannot be represented; the
+API contract says whether it is truncated or rejected.
 
 ABI compatibility notes
 
