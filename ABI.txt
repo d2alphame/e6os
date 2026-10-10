@@ -10,13 +10,13 @@ directives in NASM:
 BITS 64
 Org 0x400000
 
-The e6 kernel searches the first 65,536 bytes of the executable for the e6 program header.
-The header is 32 bytes long and must remain entirely in that region.
+The e6 kernel searches the first 65,536 bytes of the executable for the e6 program header. The header is 32 bytes long
+and must be contained entirely in that region.
 
 Program header format
 
-The search begins by looking for the magic signature 'E6BINARY', which must be 8-byte aligned.
-After the signature, the following structure must follow:
+The search begins by looking for the magic signature 'E6BINARY', which must be 8-byte aligned. After the signature, the
+following structure must follow:
 
 Entry Point Offset (4 bytes)
 Flags (2 bytes)
@@ -25,8 +25,8 @@ E6 Minor Version (1 byte)
 Reserved for future use (8 bytes)
 Xor Checksum (8 bytes)
 
-The whole header including the 8-byte magic signature therefore occupies 32 bytes.
-All 32 bytes must be fully contained in the first 65,536 bytes and must remain 8-byte aligned.
+The whole header including the 8-byte magic signature therefore occupies 32 bytes. All 32 bytes must be fully contained
+in the first 65,536 bytes and must remain 8-byte aligned.
 
 Offset | Name          | Size    | Description
 =================================================================================================================================
@@ -46,15 +46,6 @@ Bit     | Name                                                        | Descript
 1       | Check version 1 = check version, 0 = don't check version    | If set, e6 compares the program version against the OS version.
 2 to 15 | Reserved for future use                                     | These bits must be set to 0.
 
-ABI-level invariants
-
-1. The ABI is 64-bit and address-sized values are 64 bits.
-2. Pointers and addresses are stored in 64-bit registers and are treated as values with 8-byte alignment where appropriate.
-3. Buffers, arrays, records, and structs are passed by reference unless otherwise documented for a specific API.
-4. Strings are encoded as byte sequences and may be length-delimited, null-terminated, or value-terminated depending on the API contract.
-5. Numeric values use standard 8/16/32/64-bit integer widths, with signed variants where explicitly required.
-6. The kernel or user code may rely on the calling convention only when both sides obey the same ABI rules.
-
 Register usage summary
 
 The following rules are required by the ABI and are enforced by the calling convention:
@@ -68,54 +59,45 @@ R8-R15
 The callee must preserve these values across a call.
 
 Stack:
-RSP must be preserved by the callee. The stack is used for nested calls and temporary working space.
-A call may temporarily adjust RSP, but it must restore it before returning.
+RSP must be preserved by the callee. The stack is used for nested calls and temporary working space. A call may
+temporarily adjust RSP, but it must restore it before returning.
 
 Error reporting:
 When an operation fails, the carry flag is set, RAX contains the error code, and RSI points to the error string.
 On success the carry flag is cleared.
 
-Buffer and pointer conventions
-
-1. A pointer is a 64-bit address.
-2. A buffer is a region of memory with a known length or an address plus a length pair.
-3. Arrays and structs are treated as buffers and are passed via pointer-like locations in the register set.
-4. When a function needs to return more values than can fit in the standard register slots, all excess data is placed in a buffer referenced by the ABI register designated for buffers.
-5. The caller is responsible for providing valid memory ranges for pointers and buffers.
-
 Stack discipline and call frames
 
 1. The stack grows downward.
-2. The caller may place temporary inputs or scratch data on the stack when required by the ABI.
-3. The callee may use stack space for local temporaries, but must restore RSP before returning.
-4. Any stack frame layout used by a callee must be consistent with the declared calling convention for that API.
-5. A callee must not assume that a caller-provided stack location remains valid after the call unless it is explicitly documented to do so.
+2. The callee may use stack space for local temporaries, but must restore RSP before returning.
+3. Any stack frame layout used by a callee must be consistent with the declared calling convention for that API.
+4. A callee must not assume that a caller-provided stack location remains valid after the call unless it is explicitly documented to do so.
 
 Versioning and compatibility
 
 1. The program header contains version information so the kernel can reject incompatible binaries.
-2. If the version-check flag is set, the major and minor version numbers must match the target e6 version.
+2. If the version-check flag is set, the major number must match the target e6 version.
 3. Future ABI changes should be introduced with a new version, not by silently changing the meaning of existing registers or flags.
-4. Reserved bits and reserved areas must be zeroed unless the implementation explicitly documents a future use.
+4. Reserved bits, areas, and fields reserved for future use are ignored.
 
 Checksum rules
 
-The header checksum is a simple XOR checksum over the header fields. The exact layout is intentionally simple so it can be validated without a complex runtime library.
-If the checksum check is enabled and the value does not match, the kernel must reject the executable before entry.
+The header checksum is a simple XOR checksum over the header fields. If the checksum check is enabled and the value does
+not match, the program fails to load.
 
 On entry:
 Upon entry, RBX would contain the final calculated address of the entry point, i.e. 0x400000 + the value at the
 Entry Point Offset field in the header. This is the address e6 jumps to to start executing the program. If, for example,
 the Entry Point Offset is 0x1000, then RBX would contain 0x401000 on entry.
 
-RAX would contain a 64-bit random number. The random is generated using the hardware random number generator (`rdrand`).
-RDX would equal to not RAX (RDX = ~RAX). 
+RAX would contain a 64-bit random number. The random number is generated using the hardware random number generator
+(`rdrand`). RDX would equal to not RAX (RDX = ~RAX). 
 
 A program can check the above conditions to see if it was loaded by e6os (or at least, by a loader that follows the same
 ABI). For example:
 
 lea rbp, [Header.EntryPointOffset]
-movzx rcx, dword [rbp]
+mov ecx, [rbp]
 add rcx, 0x400000
 cmp rcx, rbx
 jne .not_e6os
@@ -124,7 +106,7 @@ jne .not_e6os
 not rdx
 xor rax, rdx
 jnz .not_e6os   ; A non-zero result means they're not compliments
-
+; ... blah, blah, blah
 .not_e6os:    ; Do other stuff if we were not loaded by e6. 
 
 The checksum:
