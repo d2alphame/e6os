@@ -23,7 +23,7 @@ When making a call:
 7. Count, length, and size values go into RCX.
 8. If there are too many parameters of a given type, then all parameters are placed into a memory buffer pointed to by RBX.
 9. Arrays and structs/records are treated as buffers and are passed in RBX/RBP.
-10.The caller is advised to not pass buffers on the stack.
+10. The caller is advised to not pass buffers on the stack.
 
 Return values
 
@@ -102,7 +102,7 @@ Arrays and buffers are passed as memory regions and are treated like pointer-bas
 Structs and records are treated as buffers and are passed in the same way as arrays.
 
 4. Paired strings
-A paired string is a string that is paired with another string. These strings are A/B strings. String B is a Tiny string (see above) and defines characters that may terminate string A. The paired strings or (A/B strings) that are avaialable are:
+A paired string is a string that is paired with another string. These strings are A/B strings. String B is a Tiny string (see above) and defines characters that may terminate string A. The paired strings or (A/B strings) that are available are:
 - Stop-set strings: Any value in string B may terminate string A.
 - Scan-set strings: Any value not in string B may terminate string A.
 When storing a paired string in memory, store string B as a Tiny string and follow it with the payload of string A. A pointer points to the length prefix of string B.

@@ -102,10 +102,10 @@ add rcx, 0x400000
 cmp rcx, rbx
 jne .not_e6os
 
-; Check that RAX and RDX are compliments
+; Check that RAX and RDX are complements
 not rdx
 xor rax, rdx
-jnz .not_e6os   ; A non-zero result means they're not compliments
+jnz .not_e6os   ; A non-zero result means they're not complements
 ; ... blah, blah, blah
 .not_e6os:    ; Do other stuff if we were not loaded by e6. 
 
