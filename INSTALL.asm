@@ -34,9 +34,9 @@ STANDARD_HEADER:
             push rbx
             push rbp
 
-            lea rbp, [DATA.EFI_IMAGE_HANDLE]                    ; We're going to store the efi image handle
-            mov [rbp], rcx                                      ; Store the efi image handle
-            mov [rbp + 8], rdx                                  ; Store the system table
+            lea rbp, [DATA.EFI_IMAGE_HANDLE]                         ; We're going to store the efi image handle
+            mov [rbp], rcx                                           ; Store the efi image handle
+            mov [rbp + 8], rdx                                       ; Store the system table
 
             ; Point to the simple text output protocol and also save it
             add rdx, EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL 
@@ -122,15 +122,15 @@ OPTIONAL_HEADER_START:
     
     ; The Loader flags field would normally be here, but since UEFI ignores it, we use it to store the hexadecimal prefix '0x'
     ; This would be useful for when we want to print out hexadecimal numbers
-    .HEX_PREFIX:                 db __utf16__ `0x`
+    .HEX_PREFIX:                   db __utf16__ `0x`
     
-    ;.LOADER_FLAGS:               dd 0x00                          ; Reserved, must be zero
+    ;.LOADER_FLAGS:                dd 0x00                         ; Reserved, must be zero
     
-    .NUMBER_OF_RVA_AND_SIZES:    dd 0x10                           ; Number of entries in the data directory
+    .NUMBER_OF_RVA_AND_SIZES:      dd 0x10                         ; Number of entries in the data directory
 
     ; The Data directories would normally follow but UEFI does not use them. This gives us another 128 bytes we can use here.
     DATA_DIRECTORIES:
-        .HEX_DIGITS:             db __utf16__ `0123456789ABCDEF`   ; The hex digits for when we want to print hexadecimal numbers
+        .HEX_DIGITS:               db '0123456789ABCDEF'           ; The hex digits for when we want to print hexadecimal numbers
             times 32 - ($ - DATA_DIRECTORIES) db 0                 ; Pad up to the Security Data Directory entry
 
         .SECURITY:
@@ -139,7 +139,7 @@ OPTIONAL_HEADER_START:
             times 8 db 0                                           ; Putting this here to ensure it's zeros
 
         .pre_start_continue:
-            lea rdx, [OPTIONAL_HEADER_START.BOOT_MESSAGE]             ; Print the first part of the installer's boot message
+            lea rdx, [OPTIONAL_HEADER_START.BOOT_MESSAGE]          ; Print the first part of the installer's boot message
             sub rsp, 32
             call rbx
             add rsp, 32
@@ -153,9 +153,6 @@ OPTIONAL_HEADER_START:
             ; Restore the 2 registers we preserved earlier
             pop rbp
             pop rbx
-
-            ; Enumerate storage devices. This lists out all storage devices available on the system
-            ; 
 
             ret
 
@@ -182,8 +179,24 @@ HEADER_END:
 CODE:
 EntryPoint:
     call STANDARD_HEADER.pre_start
+    lea rsi, [DATA.RandomString]
+    call e6_uefi_print_uefi_string
     mov rax, 0x00
     ret
+
+; Prints a UEFI string. UEFI strings are utf16 and null-terminated.
+; In RSI: Pointer to the string. It uses UEFI's OutputString function.
+e6_uefi_print_uefi_string:
+    push rbx                        ; Preserve RBX
+    lea rbx, [DATA.OutputString]    ; We're getting ready to call OutputString.
+    mov rbx, [rbx]
+    lea rcx, [DATA.EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL]
+    mov rcx, [rcx]
+    mov rdx, rsi                    ; RSI points to the string to print which is the second prarameter to OutputString.
+    sub rsp, 40
+    call rbx
+    jmp $
+    
 
 DATA:
 align 8
@@ -193,7 +206,9 @@ align 8
     .ClearScreen                      dq 0                     ; Pointer to the clear screen function
     .OutputString                     dq 0                     ; Pointer to the output string function
 
-times 4096 - ($ - START) db 0x00                      ; Pad up to 4kb
+    .RandomString db __utf16__ `Experimental String\0`
+
+times 4096 - ($ - START) db 0x00                               ; Pad up to 4kb
 END:
 
 %include "eficonstants.asm"
