@@ -179,10 +179,9 @@ HEADER_END:
 CODE:
 EntryPoint:
     call STANDARD_HEADER.pre_start
+    mov rax, 0xB16A55CAFEBABE
+    call e6_uefi_print_rax
     mov rax, 0x00
-
-    lea rsi, [DATA.SomeRandomString]
-    call e6_uefi_print_uefi_string
     ret
 
 ; Prints a UEFI string. UEFI strings are utf16 and null-terminated.
@@ -230,8 +229,35 @@ e6_uefi_print_uefi_string:
 
     ret
 
-; Prints the content of the RAX register. 
-e6_efi_print_rax:
+
+; Prints the content of the RAX register (in hexadecimal).
+; In RAX: Value to print
+e6_uefi_print_rax:
+
+    mov rdx, rax                                 ; Preserve the rax value in rdx
+    
+    ; First store the string '0x' at the destination memory address. That's the hexadecimal prefix
+    xor rax, rax
+    lea rdi, [DATA.rax_hex_string]
+    mov al, '0'
+    stosw
+    mov al, 'x'
+    stosw
+
+    mov rcx, 0x10                                ; Number of nibbles in a quad word
+    lea rbx, [DATA_DIRECTORIES.HEX_DIGITS]
+    .loop:
+        rol rdx, 0x04
+        mov rax, rdx
+        and rax, 0x0F
+        xlatb
+        stosw
+        loop .loop
+
+    lea rsi, [DATA.rax_hex_string]
+    call e6_uefi_print_uefi_string
+    jmp $
+    ret
 
 
 DATA:
@@ -242,6 +268,7 @@ align 8
     .ClearScreen                      dq 0                     ; Pointer to the clear screen function
     .OutputString                     dq 0                     ; Pointer to the output string function
     .SomeRandomString                 db __utf16__ `Some random string\r\n\0`
+    .rax_hex_string                   resb 38
 
 times 4096 - ($ - START) db 0x00                               ; Pad up to 4kb
 END:
