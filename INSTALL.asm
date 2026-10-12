@@ -179,24 +179,45 @@ HEADER_END:
 CODE:
 EntryPoint:
     call STANDARD_HEADER.pre_start
-    lea rsi, [DATA.RandomString]
-    call e6_uefi_print_uefi_string
     mov rax, 0x00
     ret
 
 ; Prints a UEFI string. UEFI strings are utf16 and null-terminated.
 ; In RSI: Pointer to the string. It uses UEFI's OutputString function.
 e6_uefi_print_uefi_string:
-    push rbx                        ; Preserve RBX
+    
+    ; Preserve the following registers. This includes registers we use and registers EFI might clobber.
+    push rax
+    push rbx
+    push rcx
+    push rdx
+    push r8
+    push r9
+    push r10
+    push r11
+
     lea rbx, [DATA.OutputString]    ; We're getting ready to call OutputString.
     mov rbx, [rbx]
+
+    ; First parameter to OutputString is the pointer to the Simple Text Output Protocol.
     lea rcx, [DATA.EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL]
     mov rcx, [rcx]
-    mov rdx, rsi                    ; RSI points to the string to print which is the second prarameter to OutputString.
-    sub rsp, 40
+    mov rdx, rsi                    ; RSI points to the string to print which is the second parameter to OutputString.
+    sub rsp, 32                     ; Shadow space
     call rbx
-    jmp $
+    add rsp, 32
     
+    ; Restore the registers we preserved.
+    pop r11
+    pop r10
+    pop r9
+    pop r8
+    pop rdx
+    pop rcx
+    pop rbx
+    pop rax
+
+    ret
 
 DATA:
 align 8
@@ -205,8 +226,6 @@ align 8
     .EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL  dq 0                     ; The simple text output protocol
     .ClearScreen                      dq 0                     ; Pointer to the clear screen function
     .OutputString                     dq 0                     ; Pointer to the output string function
-
-    .RandomString db __utf16__ `Experimental String\0`
 
 times 4096 - ($ - START) db 0x00                               ; Pad up to 4kb
 END:
