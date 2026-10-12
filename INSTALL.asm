@@ -234,6 +234,24 @@ e6_uefi_print_uefi_string:
 ; In RAX: Value to print
 e6_uefi_print_rax:
 
+    ; Preserve the following registers on the stack.
+    push rax
+    push rbx
+    push rcx
+    push rdx
+    push r8
+    push r9
+    push r10
+    push r11
+    push rsi
+    push rdi
+
+    ; Align the stack
+    push rbp                                     ; Preserve RBP
+    mov rbp, rsp
+    and rsp, -16                                 ; RSP is now 16-byte aligned
+    sub rsp, 32                                  ; Shadow space (keeps 16-byte alignment)
+
     mov rdx, rax                                 ; Preserve the rax value in rdx
     
     ; First store the string '0x' at the destination memory address. That's the hexadecimal prefix
@@ -256,7 +274,22 @@ e6_uefi_print_rax:
 
     lea rsi, [DATA.rax_hex_string]
     call e6_uefi_print_uefi_string
-    jmp $
+
+    mov rsp, rbp                                  ; Undo the shadow space and alignment both at once.
+    pop rbp
+
+    ; Restore the registers we preserved.
+    pop rdi
+    pop rsi
+    pop r11
+    pop r10
+    pop r9
+    pop r8
+    pop rdx
+    pop rcx
+    pop rbx
+    pop rax
+
     ret
 
 
