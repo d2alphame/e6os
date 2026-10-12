@@ -180,6 +180,9 @@ CODE:
 EntryPoint:
     call STANDARD_HEADER.pre_start
     mov rax, 0x00
+
+    lea rsi, [DATA.SomeRandomString]
+    call e6_uefi_print_uefi_string
     ret
 
 ; Prints a UEFI string. UEFI strings are utf16 and null-terminated.
@@ -196,6 +199,12 @@ e6_uefi_print_uefi_string:
     push r10
     push r11
 
+    ; Align the stack. RBP is preserved by UEFI, so it survives the call.
+    push rbp                        ; Preserve RBP
+    mov rbp, rsp
+    and rsp, -16                    ; RSP is now 16-byte aligned
+    sub rsp, 32                     ; Shadow space (keeps 16-byte alignment)
+
     lea rbx, [DATA.OutputString]    ; We're getting ready to call OutputString.
     mov rbx, [rbx]
 
@@ -205,7 +214,9 @@ e6_uefi_print_uefi_string:
     mov rdx, rsi                    ; RSI points to the string to print which is the second parameter to OutputString.
     sub rsp, 32                     ; Shadow space
     call rbx
-    add rsp, 32
+
+    mov rsp, rbp                    ; Undo the shadow space and alignment in both at once.
+    pop rbp
     
     ; Restore the registers we preserved.
     pop r11
@@ -219,6 +230,10 @@ e6_uefi_print_uefi_string:
 
     ret
 
+; Prints the content of the RAX register. 
+e6_efi_print_rax:
+
+
 DATA:
 align 8
     .EFI_IMAGE_HANDLE                 dq 0                     ; Image handle will be passed to us in RCX
@@ -226,6 +241,7 @@ align 8
     .EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL  dq 0                     ; The simple text output protocol
     .ClearScreen                      dq 0                     ; Pointer to the clear screen function
     .OutputString                     dq 0                     ; Pointer to the output string function
+    .SomeRandomString                 db __utf16__ `Some random string\r\n\0`
 
 times 4096 - ($ - START) db 0x00                               ; Pad up to 4kb
 END:
