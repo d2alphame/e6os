@@ -130,22 +130,22 @@ OPTIONAL_HEADER_START:
 
     ; The Data directories would normally follow but UEFI does not use them. This gives us another 128 bytes we can use here.
     DATA_DIRECTORIES:
-        .HEX_DIGITS:               db '0123456789ABCDEF'           ; The hex digits for when we want to print hexadecimal numbers
+        .HEX_DIGITS:              db '0123456789ABCDEF'            ; The hex digits for when we want to print hexadecimal numbers
             times 32 - ($ - DATA_DIRECTORIES) db 0                 ; Pad up to the Security Data Directory entry
 
         .SECURITY:
-            times 8 db 0                                           ; Pad with zeros for now. We'll use proper values when we're ready for secure boot
+            times 8 db 0                                            ; Pad with zeros for now. We'll use proper values when we're ready for secure boot
         .BASE_RELOC:
-            times 8 db 0                                           ; Putting this here to ensure it's zeros
+            times 8 db 0                                            ; Putting this here to ensure it's zeros
 
         .pre_start_continue:
-            lea rdx, [OPTIONAL_HEADER_START.BOOT_MESSAGE]          ; Print the first part of the installer's boot message
+            lea rdx, [OPTIONAL_HEADER_START.BOOT_MESSAGE]           ; Print the first part of the installer's boot message
             sub rsp, 32
             call rbx
             add rsp, 32
             pop rcx
 
-            lea rdx, [OPTIONAL_HEADER_START.BOOT_MESSAGE_CONT]
+            lea rdx, [OPTIONAL_HEADER_START.BOOT_MESSAGE_CONT]       ; Print the second part of the installer's boot message
             sub rsp, 32
             call rbx
             add rsp, 32
@@ -179,9 +179,11 @@ HEADER_END:
 CODE:
 EntryPoint:
     call STANDARD_HEADER.pre_start
-    mov rax, 0xB16A55CAFEBABE
-    call e6_uefi_print_rax
-    mov rax, 0x00
+    lea rsi, [START]
+    call e6_uefi_dump_memory
+    ; mov rax, 0xB16A55CAFEBABE
+    ; call e6_uefi_print_rax
+    ; mov rax, 0x00
     ret
 
 ; Prints a UEFI string. UEFI strings are utf16 and null-terminated.
@@ -197,6 +199,7 @@ e6_uefi_print_uefi_string:
     push r9
     push r10
     push r11
+    push rsi
 
     ; Align the stack. RBP is preserved by UEFI, so it survives the call.
     push rbp                        ; Preserve RBP
@@ -218,6 +221,7 @@ e6_uefi_print_uefi_string:
     pop rbp
     
     ; Restore the registers we preserved.
+    pop rsi
     pop r11
     pop r10
     pop r9
@@ -233,18 +237,6 @@ e6_uefi_print_uefi_string:
 ; Prints the content of the RAX register (in hexadecimal).
 ; In RAX: Value to print
 e6_uefi_print_rax:
-
-    ; Preserve the following registers on the stack.
-    push rax
-    push rbx
-    push rcx
-    push rdx
-    push r8
-    push r9
-    push r10
-    push r11
-    push rsi
-    push rdi
 
     ; Align the stack
     push rbp                                     ; Preserve RBP
@@ -278,19 +270,95 @@ e6_uefi_print_rax:
     mov rsp, rbp                                  ; Undo the shadow space and alignment both at once.
     pop rbp
 
-    ; Restore the registers we preserved.
-    pop rdi
-    pop rsi
-    pop r11
-    pop r10
-    pop r9
-    pop r8
-    pop rdx
-    pop rcx
-    pop rbx
-    pop rax
-
     ret
+
+
+; Prints the content of a block of 256 bytes of memory.
+; In RSI: Pointer to memory address to dump.
+e6_uefi_dump_memory:
+
+    ; First ensure the specified memory address is aligned on a 256 byte boundary
+    mov rax, rsi
+    and rax, 0xFF
+    jnz .unaligned
+
+    ; Print the headers
+    push rsi                            ; Preserve rsi on the stack as the follwoing lines of code affect it.
+    lea rsi, [DATA.memory_dump_header]
+    call e6_uefi_print_uefi_string
+    pop rsi
+
+
+    ; We'll be printing 16 lines of 16 bytes each. Each line begins with the memory address of that line.
+    ; What follows will be done in a loop.
+    mov rcx, 16                             ; We'll be processing 16 lines.
+    mov r8, rcx                             ; Use this to preserve RCX because the following loop will affect it.
+    lea rdi, [DATA.memory_dump_line_buffer]
+    mov r9, rdi                             ; Preserve RDI in R9.
+    .process_bytes:
+        push rcx                            ; Preserve RCX on the stack
+        ; Ensure that the memory dump buffer is zeroed out.
+        xor rax, rax
+        mov rcx, 134
+        rep stosb
+        mov rdi, r9           ; Restore RDI from R9.
+        mov rcx, r8           ; Restore RCX we preserved earlier in R8.
+
+        ; After zeroing out, print the address.
+        mov r10, rsi
+        xor rax, rax 
+        mov rcx, 16
+        lea rbx, [DATA_DIRECTORIES.HEX_DIGITS]
+        .loop_address_nibbles:
+            rol rsi, 4
+            mov rax, rsi
+            and rax, 0x0F
+            xlatb
+            stosw
+            loop .loop_address_nibbles
+
+        mov rsi, r10          ; Restore RSI.
+        mov rcx, 16           ; Count for loop to print actual bytes.
+        ; Each of the 16 bytes to print is a space followed by 2 hexadecimal characters.
+        .loop_bytes:
+            mov al, ' '
+            stosw
+            lodsb               ; Read a byte into al.
+            mov rdx, rax        ; Preserve the byte in rdx.
+            shr rax, 4          ; Get the upper nibble.
+            and rax, 15
+            xlatb
+            stosw
+            mov rax, rdx        ; Restore rax from rdx.
+            and rax, 15         ; Get the lower nibble.
+            xlatb
+            stosw
+            loop .loop_bytes
+
+        ; Add \r and \n and terminate with a null
+        mov al, `\r`
+        stosw
+        mov al, `\n`
+        stosw
+        xor rax, rax
+        stosw
+
+        ; Go print the buffer. Remember to preserve and restore RSI first.
+        push rsi
+        mov rsi, r9
+        call e6_uefi_print_uefi_string
+        pop rsi
+
+        pop rcx
+        loop .process_bytes
+
+        jmp $
+
+    
+    .unaligned:
+        jmp $
+        stc
+        ret
 
 
 DATA:
@@ -301,7 +369,19 @@ align 8
     .ClearScreen                      dq 0                     ; Pointer to the clear screen function
     .OutputString                     dq 0                     ; Pointer to the output string function
     .SomeRandomString                 db __utf16__ `Some random string\r\n\0`
+    .memory_dump_header:              db __utf16__ `\r\n                  0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F\r\n\0`   
     .rax_hex_string                   resb 38
+    
+    ; This is for buffering a line of memory before printing.
+    ; 1. Each line begins with the address which is 8 bytes. Each byte is represented by 2 characters, and each
+    ;    character occupies 2 bytes in utf16. For the address, this makes 8 x 2 x 2 = 32
+    ; 2. Each byte is represented by a space character and 2 hexadecimal characters. This makes 3 characters per byte.
+    ;    at 16 bytes per line and 2 bytes per character?? (utf16) that makes 3 x 16 x 2 = 96
+    ; 3. \r, \n, and null characters (uefi strings are null terminated) at 2 bytes per character (utf16), this adds
+    ;    an additional 3 x 2 = 6.
+    ; 4. Total amount of memory for each line of memory dump = 32 + 96 + 6 = 134 bytes.
+    .memory_dump_line_buffer          resb 134
+
 
 times 4096 - ($ - START) db 0x00                               ; Pad up to 4kb
 END:
