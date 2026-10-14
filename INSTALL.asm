@@ -186,6 +186,8 @@ EntryPoint:
     ; mov rax, 0x00
     ret
 
+
+
 ; Prints a UEFI string. UEFI strings are utf16 and null-terminated.
 ; In RSI: Pointer to the string. It uses UEFI's OutputString function.
 e6_uefi_print_uefi_string:
@@ -200,6 +202,9 @@ e6_uefi_print_uefi_string:
     push r10
     push r11
     push rsi
+    pushfq
+
+    cld
 
     ; Align the stack. RBP is preserved by UEFI, so it survives the call.
     push rbp                        ; Preserve RBP
@@ -221,6 +226,7 @@ e6_uefi_print_uefi_string:
     pop rbp
     
     ; Restore the registers we preserved.
+    popfq
     pop rsi
     pop r11
     pop r10
@@ -232,6 +238,7 @@ e6_uefi_print_uefi_string:
     pop rax
 
     ret
+
 
 
 ; Prints the content of the RAX register (in hexadecimal).
@@ -273,42 +280,58 @@ e6_uefi_print_rax:
     ret
 
 
+
 ; Prints the content of a block of 256 bytes of memory.
 ; In RSI: Pointer to memory address to dump.
 e6_uefi_dump_memory:
+
+    ; As usual, preserve the necessary registers
+    push rax
+    push rbx
+    push rcx
+    push rdx
+    push r8
+    push r9
+    push r10
+    push r11
+    push rsi
+    pushfq
+
+    cld                     ; Ensure the direction flag is clear
 
     ; First ensure the specified memory address is aligned on a 256 byte boundary
     mov rax, rsi
     and rax, 0xFF
     jnz .unaligned
 
-    ; Print the headers
-    push rsi                            ; Preserve rsi on the stack as the follwoing lines of code affect it.
+    lea rbx, [DATA_DIRECTORIES.HEX_DIGITS]
+
+    ; Print the header
+    push rsi                                   ; Preserve rsi on the stack as the follwoing lines of code affect it.
     lea rsi, [DATA.memory_dump_header]
     call e6_uefi_print_uefi_string
     pop rsi
 
-
     ; We'll be printing 16 lines of 16 bytes each. Each line begins with the memory address of that line.
     ; What follows will be done in a loop.
-    mov rcx, 16                             ; We'll be processing 16 lines.
-    mov r8, rcx                             ; Use this to preserve RCX because the following loop will affect it.
-    lea rdi, [DATA.memory_dump_line_buffer]
-    mov r9, rdi                             ; Preserve RDI in R9.
+    mov rcx, 16                                 ; We'll be processing 16 lines.
+    ; mov r8, rcx                                 ; Use this to preserve RCX because the following loop will affect it.
+    lea r9, [DATA.memory_dump_line_buffer]
+    
     .process_bytes:
-        push rcx                            ; Preserve RCX on the stack
-        ; Ensure that the memory dump buffer is zeroed out.
-        xor rax, rax
-        mov rcx, 134
-        rep stosb
-        mov rdi, r9           ; Restore RDI from R9.
-        mov rcx, r8           ; Restore RCX we preserved earlier in R8.
+        push rcx                                ; Preserve RCX on the stack
+        mov rdi, r9
+
+        ; ; Ensure that the memory dump buffer is zeroed out.
+        ; xor rax, rax
+        ; mov rcx, 134
+        ; rep stosb
+        ; mov rdi, r9                             ; Restore RDI from R9.
 
         ; After zeroing out, print the address.
-        mov r10, rsi
+        ; mov r10, rsi                            ; Preserve RSI in R10.
         xor rax, rax 
-        mov rcx, 16
-        lea rbx, [DATA_DIRECTORIES.HEX_DIGITS]
+        mov rcx, 16                             ; There are 16 nibbles in an 8-byte address
         .loop_address_nibbles:
             rol rsi, 4
             mov rax, rsi
@@ -317,20 +340,20 @@ e6_uefi_dump_memory:
             stosw
             loop .loop_address_nibbles
 
-        mov rsi, r10          ; Restore RSI.
-        mov rcx, 16           ; Count for loop to print actual bytes.
+        ; mov rsi, r10                            ; Restore RSI.
+        mov rcx, 16                             ; Count for loop to print actual bytes.
         ; Each of the 16 bytes to print is a space followed by 2 hexadecimal characters.
         .loop_bytes:
             mov al, ' '
             stosw
-            lodsb               ; Read a byte into al.
-            mov rdx, rax        ; Preserve the byte in rdx.
-            shr rax, 4          ; Get the upper nibble.
+            lodsb                               ; Read a byte into al.
+            mov rdx, rax                        ; Preserve the byte in rdx.
+            shr rax, 4                          ; Get the upper nibble.
             and rax, 15
             xlatb
             stosw
-            mov rax, rdx        ; Restore rax from rdx.
-            and rax, 15         ; Get the lower nibble.
+            mov rax, rdx                        ; Restore rax from rdx.
+            and rax, 15                         ; Get the lower nibble.
             xlatb
             stosw
             loop .loop_bytes
@@ -343,7 +366,7 @@ e6_uefi_dump_memory:
         xor rax, rax
         stosw
 
-        ; Go print the buffer. Remember to preserve and restore RSI first.
+        ; Go print the buffer. Remember to preserve RSI first and then restore.
         push rsi
         mov rsi, r9
         call e6_uefi_print_uefi_string
@@ -352,8 +375,18 @@ e6_uefi_dump_memory:
         pop rcx
         loop .process_bytes
 
-        jmp $
-
+        popfq
+        pop rsi
+        pop r11
+        pop r10
+        pop r9
+        pop r8
+        pop rdx
+        pop rcx
+        pop rbx
+        pop rax
+        
+        ret
     
     .unaligned:
         jmp $
