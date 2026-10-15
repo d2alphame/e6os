@@ -179,7 +179,7 @@ HEADER_END:
 CODE:
 EntryPoint:
     call STANDARD_HEADER.pre_start
-    lea rsi, [START]
+    lea rbx, [START]
     call e6_uefi_dump_memory
     ; mov rax, 0xB16A55CAFEBABE
     ; call e6_uefi_print_rax
@@ -245,6 +245,15 @@ e6_uefi_print_uefi_string:
 ; In RAX: Value to print
 e6_uefi_print_rax:
 
+    push rax
+    push rbx
+    push rcx
+    push rdx
+    push rdi
+    pushfq
+
+    cld
+
     ; Align the stack
     push rbp                                     ; Preserve RBP
     mov rbp, rsp
@@ -277,12 +286,19 @@ e6_uefi_print_rax:
     mov rsp, rbp                                  ; Undo the shadow space and alignment both at once.
     pop rbp
 
+    popfq
+    pop rdi
+    pop rdx
+    pop rcx
+    pop rbx
+    pop rax
+
     ret
 
 
 
 ; Prints the content of a block of 256 bytes of memory.
-; In RSI: Pointer to memory address to dump.
+; In RBX: Pointer to memory address to dump.
 e6_uefi_dump_memory:
 
     ; As usual, preserve the necessary registers
@@ -297,7 +313,9 @@ e6_uefi_dump_memory:
     push rsi
     pushfq
 
-    cld                     ; Ensure the direction flag is clear
+    cld                                        ; Ensure the direction flag is clear
+
+    mov rsi, rbx
 
     ; First ensure the specified memory address is aligned on a 256 byte boundary
     mov rax, rsi
@@ -315,21 +333,13 @@ e6_uefi_dump_memory:
     ; We'll be printing 16 lines of 16 bytes each. Each line begins with the memory address of that line.
     ; What follows will be done in a loop.
     mov rcx, 16                                 ; We'll be processing 16 lines.
-    ; mov r8, rcx                                 ; Use this to preserve RCX because the following loop will affect it.
     lea r9, [DATA.memory_dump_line_buffer]
     
     .process_bytes:
         push rcx                                ; Preserve RCX on the stack
         mov rdi, r9
 
-        ; ; Ensure that the memory dump buffer is zeroed out.
-        ; xor rax, rax
-        ; mov rcx, 134
-        ; rep stosb
-        ; mov rdi, r9                             ; Restore RDI from R9.
-
         ; After zeroing out, print the address.
-        ; mov r10, rsi                            ; Preserve RSI in R10.
         xor rax, rax 
         mov rcx, 16                             ; There are 16 nibbles in an 8-byte address
         .loop_address_nibbles:
@@ -340,7 +350,6 @@ e6_uefi_dump_memory:
             stosw
             loop .loop_address_nibbles
 
-        ; mov rsi, r10                            ; Restore RSI.
         mov rcx, 16                             ; Count for loop to print actual bytes.
         ; Each of the 16 bytes to print is a space followed by 2 hexadecimal characters.
         .loop_bytes:
@@ -375,6 +384,12 @@ e6_uefi_dump_memory:
         pop rcx
         loop .process_bytes
 
+        jmp .cleanup
+    
+    .unaligned:
+        stc
+
+    .cleanup:
         popfq
         pop rsi
         pop r11
@@ -386,11 +401,7 @@ e6_uefi_dump_memory:
         pop rbx
         pop rax
         
-        ret
-    
-    .unaligned:
-        jmp $
-        stc
+        clc
         ret
 
 
@@ -401,15 +412,15 @@ align 8
     .EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL  dq 0                     ; The simple text output protocol
     .ClearScreen                      dq 0                     ; Pointer to the clear screen function
     .OutputString                     dq 0                     ; Pointer to the output string function
-    .SomeRandomString                 db __utf16__ `Some random string\r\n\0`
     .memory_dump_header:              db __utf16__ `\r\n                  0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F\r\n\0`   
+    
     .rax_hex_string                   resb 38
     
     ; This is for buffering a line of memory before printing.
     ; 1. Each line begins with the address which is 8 bytes. Each byte is represented by 2 characters, and each
     ;    character occupies 2 bytes in utf16. For the address, this makes 8 x 2 x 2 = 32
     ; 2. Each byte is represented by a space character and 2 hexadecimal characters. This makes 3 characters per byte.
-    ;    at 16 bytes per line and 2 bytes per character?? (utf16) that makes 3 x 16 x 2 = 96
+    ;    at 16 bytes per line and 2 bytes per character (utf16) that makes 3 x 16 x 2 = 96
     ; 3. \r, \n, and null characters (uefi strings are null terminated) at 2 bytes per character (utf16), this adds
     ;    an additional 3 x 2 = 6.
     ; 4. Total amount of memory for each line of memory dump = 32 + 96 + 6 = 134 bytes.
