@@ -179,11 +179,20 @@ HEADER_END:
 CODE:
 EntryPoint:
     call STANDARD_HEADER.pre_start
-    lea rbx, [START]
-    call e6_uefi_dump_memory
-    ; mov rax, 0xB16A55CAFEBABE
-    ; call e6_uefi_print_rax
-    ; mov rax, 0x00
+
+    ; Detect storage devices. And list them out for the user. List the storage devices by vendor and size. The user
+    ; presses a number to select a storage device.
+    ; An example of an entry is:
+    ;    1. (GPT) Samsung NVMe 12,884,901,888 bytes
+    ; The user then types 1, and presses enter to select the storage device.
+    ; If the device is not GPT-formatted, tell the user the device is not GPT-formatted.
+    ; Ask them if they want to format it with GPT partitioning scheme.
+    ; If they enter 'y' for yes, tell them to backup their storage devices before continuing.
+    ; Once they confirm do GPT on the device.
+    ; Next, create a FAT32 EFI System Partition.
+    ; 
+
+    mov rax, 0x00
     ret
 
 
@@ -210,7 +219,7 @@ e6_uefi_print_uefi_string:
     push rbp                        ; Preserve RBP
     mov rbp, rsp
     and rsp, -16                    ; RSP is now 16-byte aligned
-    sub rsp, 32                     ; Shadow space (keeps 16-byte alignment)
+    ; sub rsp, 32                     ; Shadow space (keeps 16-byte alignment)
 
     lea rbx, [DATA.OutputString]    ; We're getting ready to call OutputString.
     mov rbx, [rbx]
@@ -311,6 +320,7 @@ e6_uefi_dump_memory:
     push r10
     push r11
     push rsi
+    push rdi
     pushfq
 
     cld                                        ; Ensure the direction flag is clear
@@ -384,6 +394,7 @@ e6_uefi_dump_memory:
         pop rcx
         loop .process_bytes
 
+        clc
         jmp .cleanup
     
     .unaligned:
@@ -391,6 +402,7 @@ e6_uefi_dump_memory:
 
     .cleanup:
         popfq
+        pop rdi
         pop rsi
         pop r11
         pop r10
@@ -401,8 +413,8 @@ e6_uefi_dump_memory:
         pop rbx
         pop rax
         
-        clc
         ret
+
 
 
 DATA:
@@ -424,7 +436,7 @@ align 8
     ; 3. \r, \n, and null characters (uefi strings are null terminated) at 2 bytes per character (utf16), this adds
     ;    an additional 3 x 2 = 6.
     ; 4. Total amount of memory for each line of memory dump = 32 + 96 + 6 = 134 bytes.
-    .memory_dump_line_buffer          resb 134
+    .memory_dump_line_buffer:          resb 134
 
 
 times 4096 - ($ - START) db 0x00                               ; Pad up to 4kb
