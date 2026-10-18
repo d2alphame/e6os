@@ -34,7 +34,7 @@ STANDARD_HEADER:
             push rbx
             push rbp
 
-            lea rbp, [DATA.EFI_IMAGE_HANDLE]                         ; We're going to store the efi image handle
+            lea rbp, [BSS.EFI_IMAGE_HANDLE]                         ; We're going to store the efi image handle
             mov [rbp], rcx                                           ; Store the efi image handle
             mov [rbp + 8], rdx                                       ; Store the system table
 
@@ -64,7 +64,7 @@ STANDARD_HEADER:
     .SIGNATURE_POINTER:          dd .PE_SIGNATURE - START                                            ; Points at the PE Signature
     .PE_SIGNATURE:               db 'PE', 0x00, 0x00                                                 ; This is the pe signature. The characters 'PE' followed by 2 null bytes
     .MACHINE_TYPE:               dw 0x8664                                                           ; Targetting the x64 machine
-    .NUMBER_OF_SECTIONS:         dw 1                                                                ; Number of sections. Indicates size of section table that immediately follows the headers
+    .NUMBER_OF_SECTIONS:         dw 2                                                                ; Number of sections. Indicates size of section table that immediately follows the headers
     .CREATED_DATE_TIME:          dd 1748399067                                                       ; Number of seconds since 1970 since when the file was created
     .SYMBOL_TABLE_POINTER:       dd 0x00                                                             ; Pointer to the symbol table. There should be no symbol table in an image so this is 0
     .NUMBER_OF_SYMBOLS:          dd 0x00                                                             ; Because there are no symbol tables in an image
@@ -83,7 +83,7 @@ OPTIONAL_HEADER_START:
     ; .MINOR_LINKER_VERSION:       db 0                            ; This too
     .SIZE_OF_CODE:               dd END - CODE                   ; The size of the code section
     .INITIALIZED_DATA_SIZE:      dd END - CODE                   ; Size of initialized data section
-    .UNINITIALIZED_DATA_SIZE:    dd 0x00                         ; Size of uninitialized data section
+    .UNINITIALIZED_DATA_SIZE:    dd BSS_END - BSS                ; Size of uninitialized data section
     .ENTRY_POINT_ADDRESS:        dd EntryPoint - START           ; Address of entry point relative to image base when the image is loaded in memory
     .BASE_OF_CODE_ADDRESS:       dd CODE                         ; Relative address of base of code
     .IMAGE_BASE:                 dq 0x400000                     ; Where in memory we would prefer the image to be loaded at
@@ -104,7 +104,7 @@ OPTIONAL_HEADER_START:
     ; .MINOR_SUBSYSTEM_VERSION:    dw 0x00                         ;
     ; .WIN32_VERSION_VALUE:        dd 0x00                         ; Reserved, must be 0
     
-    .IMAGE_SIZE:                 dd END - START                  ; The size in bytes of the image when loaded in memory including all headers
+    .IMAGE_SIZE:                 dd 0x3000                       ; The size in bytes of the image when loaded in memory including all headers
     .HEADERS_SIZE:               dd HEADER_END - HEADER_START    ; Size of all the headers
     .CHECKSUM:                   dd 0x00                         ; Hoping this doesn't break the application
     .SUBSYSTEM:                  dw 10                           ; The subsystem. In this case we're making a UEFI application.
@@ -156,7 +156,7 @@ OPTIONAL_HEADER_START:
 
             ret
 
-        times 128 - ($ - DATA_DIRECTORIES) db 0                    ; Pad up the data directory entries up to 128 bytes
+        times 128 - ($ - DATA_DIRECTORIES) db 0                       ; Pad up the data directory entries up to 128 bytes
 
     ; DATA_DIRECTORIES:    times 16 dq 0
 
@@ -164,34 +164,44 @@ OPTIONAL_HEADER_END:
 
 SECTION_HEADERS:
     SECTION_ALL:
-        .name                       db ".all", 0x00, 0x00, 0x00, 0x00
-        .virtual_size               dd END - CODE
-        .virtual_address            dd CODE
-        .size_of_raw_data           dd END - CODE
-        .pointer_to_raw_data        dd CODE
-        .pointer_to_relocations     dd 0                                    ; Set to 0 for executable images
-        .pointer_to_line_numbers    dd 0                                    ; There are no COFF line numbers
-        .number_of_relocations      dw 0                                    ; Set to 0 for executable images
-        .number_of_line_numbers     dw 0                                    ; Should be 0 for images
-        .characteristics            dd 0x70000060                           ; Need to read up more on this
+        CODE_SECTION_HEADER:
+            .name                       db ".code", 0x00, 0x00, 0x00
+            .virtual_size               dd END - CODE
+            .virtual_address            dd CODE - START
+            .size_of_raw_data           dd END - CODE
+            .pointer_to_raw_data        dd CODE - START
+            .pointer_to_relocations     dd 0                                    ; Set to 0 for executable images
+            .pointer_to_line_numbers    dd 0                                    ; There are no COFF line numbers
+            .number_of_relocations      dw 0                                    ; Set to 0 for executable images
+            .number_of_line_numbers     dw 0                                    ; Should be 0 for images
+            .characteristics            dd 0x60000060                           ; Need to read up more on this
+        
+        BSS_SECTION_HEADER:
+            .name                       db ".bss", 0x00, 0x00, 0x00, 0x00
+            .virtual_size               dd BSS_END - BSS
+            .virtual_address            dd BSS - START
+            .size_of_raw_data           dd 0
+            .pointer_to_raw_data        dd 0
+            .pointer_to_relocations     dd 0
+            .pointer_to_line_numbers    dd 0
+            .number_of_relocations      dw 0
+            .number_of_line_numbers     dw 0
+            .characteristics            dd 0xC0000080
+    
+    times 4096 - ($ - START)            db 0
 HEADER_END:
+
+
 
 CODE:
 EntryPoint:
     call STANDARD_HEADER.pre_start
-
-    ; Detect storage devices. And list them out for the user. List the storage devices by vendor and size. The user
-    ; presses a number to select a storage device.
-    ; An example of an entry is:
-    ;    1. (GPT) Samsung NVMe 12,884,901,888 bytes
-    ; The user then types 1, and presses enter to select the storage device.
-    ; If the device is not GPT-formatted, tell the user the device is not GPT-formatted.
-    ; Ask them if they want to format it with GPT partitioning scheme.
-    ; If they enter 'y' for yes, tell them to backup their storage devices before continuing.
-    ; Once they confirm do GPT on the device.
-    ; Next, create a FAT32 EFI System Partition.
-    ; 
-
+    lea rsi, [DATA.sample_string]
+    call e6_uefi_print_uefi_string
+    mov rax, 0xB16A55CAFEBABE
+    call e6_uefi_print_rax
+    lea rbx, [START]
+    call e6_uefi_dump_memory
     mov rax, 0x00
     ret
 
@@ -221,11 +231,11 @@ e6_uefi_print_uefi_string:
     and rsp, -16                    ; RSP is now 16-byte aligned
     ; sub rsp, 32                     ; Shadow space (keeps 16-byte alignment)
 
-    lea rbx, [DATA.OutputString]    ; We're getting ready to call OutputString.
+    lea rbx, [BSS.OutputString]    ; We're getting ready to call OutputString.
     mov rbx, [rbx]
 
     ; First parameter to OutputString is the pointer to the Simple Text Output Protocol.
-    lea rcx, [DATA.EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL]
+    lea rcx, [BSS.EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL]
     mov rcx, [rcx]
     mov rdx, rsi                    ; RSI points to the string to print which is the second parameter to OutputString.
     sub rsp, 32                     ; Shadow space
@@ -273,7 +283,7 @@ e6_uefi_print_rax:
     
     ; First store the string '0x' at the destination memory address. That's the hexadecimal prefix
     xor rax, rax
-    lea rdi, [DATA.rax_hex_string]
+    lea rdi, [BSS.rax_hex_string]
     mov al, '0'
     stosw
     mov al, 'x'
@@ -289,7 +299,11 @@ e6_uefi_print_rax:
         stosw
         loop .loop
 
-    lea rsi, [DATA.rax_hex_string]
+    ; Add the terminating null byte
+    xor rax, rax
+    stosw
+
+    lea rsi, [BSS.rax_hex_string]
     call e6_uefi_print_uefi_string
 
     mov rsp, rbp                                  ; Undo the shadow space and alignment both at once.
@@ -343,7 +357,7 @@ e6_uefi_dump_memory:
     ; We'll be printing 16 lines of 16 bytes each. Each line begins with the memory address of that line.
     ; What follows will be done in a loop.
     mov rcx, 16                                 ; We'll be processing 16 lines.
-    lea r9, [DATA.memory_dump_line_buffer]
+    lea r9, [BSS.memory_dump_line_buffer]
     
     .process_bytes:
         push rcx                                ; Preserve RCX on the stack
@@ -418,14 +432,23 @@ e6_uefi_dump_memory:
 
 
 DATA:
-align 8
-    .EFI_IMAGE_HANDLE                 dq 0                     ; Image handle will be passed to us in RCX
-    .EFI_SYSTEM_TABLE                 dq 0                     ; System table will be passed to us in RDX
-    .EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL  dq 0                     ; The simple text output protocol
-    .ClearScreen                      dq 0                     ; Pointer to the clear screen function
-    .OutputString                     dq 0                     ; Pointer to the output string function
     .memory_dump_header:              db __utf16__ `\r\n                  0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F\r\n\0`   
-    
+    .sample_string:                   db __utf16__ `Yes Lordy!\r\n\0`
+    times 4096 - ($ - CODE)           db 0x00                    ; Pad up to 4kb
+
+END:
+
+
+
+; `section .bss` is for unintialized data. 'nobits' is used to tell nasm to just use this section for address
+; calculations. This section will not appear in the compiled binary executable file.  
+section .bss nobits
+BSS:
+    .EFI_IMAGE_HANDLE                 resq 1                     ; Image handle will be passed to us in RCX
+    .EFI_SYSTEM_TABLE                 resq 1                     ; System table will be passed to us in RDX
+    .EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL  resq 1                     ; The simple text output protocol
+    .ClearScreen                      resq 1                     ; Pointer to the clear screen function
+    .OutputString                     resq 1                     ; Pointer to the output string function
     .rax_hex_string                   resb 38
     
     ; This is for buffering a line of memory before printing.
@@ -436,11 +459,10 @@ align 8
     ; 3. \r, \n, and null characters (uefi strings are null terminated) at 2 bytes per character (utf16), this adds
     ;    an additional 3 x 2 = 6.
     ; 4. Total amount of memory for each line of memory dump = 32 + 96 + 6 = 134 bytes.
+
     .memory_dump_line_buffer:          resb 134
 
-
-times 4096 - ($ - START) db 0x00                               ; Pad up to 4kb
-END:
+BSS_END:
 
 %include "eficonstants.asm"
 %include "e6constants.asm"
