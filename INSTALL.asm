@@ -31,6 +31,7 @@ struc efi
     .BOOT_SERVICES_TABLE          resq 1                     ; The boot services table.
     .ClearScreen                  resq 1                     ; Pointer to the clear screen function
     .OutputString                 resq 1                     ; Pointer to the output string function
+    .LocateHandleBuffer           resq 1                     ; For the LocateHandleBuffer function will be needed to enumerate storage devices and others
 endstruc
 
     
@@ -452,6 +453,7 @@ e6_uefi_dump_memory:
 DATA:
     .memory_dump_header:              db __utf16__ `\r\n                  0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F\r\n\0`   
     .sample_string:                   db __utf16__ `Yes Lordy!\r\n\0`
+    
     times 4096 - ($ - CODE)           db 0x00                    ; Pad up to 4kb
 
 END:
