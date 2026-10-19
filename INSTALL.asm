@@ -18,14 +18,34 @@
 ; This is the source code for the installer of the e6 Operating System. 
 
 
+
 Bits 64
 DEFAULT REL
 
+
+; A struc that will be useful for efi pointers, functions, variables, etc
+struc efi 
+    .IMAGE_HANDLE                 resq 1                     ; Image handle will be passed to us in RCX
+    .SYSTEM_TABLE                 resq 1                     ; System table will be passed to us in RDX
+    .SIMPLE_TEXT_OUTPUT_PROTOCOL  resq 1                     ; The simple text output protocol
+    .BOOT_SERVICES_TABLE          resq 1                     ; The boot services table.
+    .ClearScreen                  resq 1                     ; Pointer to the clear screen function
+    .OutputString                 resq 1                     ; Pointer to the output string function
+endstruc
+
+    
 START:
 HEADER_START:
 STANDARD_HEADER:
     .DOS_SIGNATURE:              db "MZ"                                                             ; DOS Signature. This is required
-        
+
+        align 8
+        .EFI_BLOCK_IO_PROTOCOL_GUID:
+            dd 0x964E5B21
+            dw 0x6459
+            dw 0x11D2
+            db 0x8E, 0x39, 0x00, 0xA0, 0xC9, 0x69, 0x72, 0x3B
+
         ; A DOS stub should normally be here but uefi doesn't need it, so this will be filled
         ; with something a bit more useful.
         .pre_start:
@@ -34,28 +54,15 @@ STANDARD_HEADER:
             push rbx
             push rbp
 
-            lea rbp, [BSS.EFI_IMAGE_HANDLE]                         ; We're going to store the efi image handle
-            mov [rbp], rcx                                           ; Store the efi image handle
-            mov [rbp + 8], rdx                                       ; Store the system table
+            lea rbp, [BSS.EFI]                                       ; We're going to store the efi image handle
+            mov [rbp + efi.IMAGE_HANDLE], rcx                        ; Store the efi image handle
+            mov [rbp + efi.SYSTEM_TABLE], rdx                                       ; Store the system table
 
             ; Point to the simple text output protocol and also save it
             add rdx, EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL 
             mov rdx, [rdx]
             push rdx                                                  ; Preserve Simple Text Output Protocol on the stack
-            mov [rbp + 16], rdx                                       ; Store the Simple Text Output Protocol
-
-            ; Store the pointer to clear screen
-            mov rax, [rdx + EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_ClearScreen]
-            mov [rbp + 24], rax
-
-            ; Store the pointer to Output string
-            mov rax, [rdx + EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_OutputString]
-            mov [rbp + 32], rax
-
-            mov rcx, rdx                                              ; First parameter to output string is the simple text output protocol
-
-            ; Get ready to call OutputString
-            mov rbx, [rdx + EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_OutputString]
+            mov [rbp + efi.SIMPLE_TEXT_OUTPUT_PROTOCOL], rdx          ; Store the Simple Text Output Protocol
 
             jmp DATA_DIRECTORIES.pre_start_continue                   ; Jump to the rest of the pre-start code
 
@@ -139,6 +146,18 @@ OPTIONAL_HEADER_START:
             times 8 db 0                                            ; Putting this here to ensure it's zeros
 
         .pre_start_continue:
+            ; Store the pointer to clear screen
+            mov rax, [rdx + EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_ClearScreen]
+            mov [rbp + efi.ClearScreen], rax
+
+            ; Store the pointer to Output string
+            mov rax, [rdx + EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_OutputString]
+            mov [rbp + efi.OutputString], rax
+            mov rcx, rdx                                            ; First parameter to output string is the simple text output protocol
+            
+            ; Get ready to call OutputString
+            mov rbx, [rdx + EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_OutputString]
+
             lea rdx, [OPTIONAL_HEADER_START.BOOT_MESSAGE]           ; Print the first part of the installer's boot message
             sub rsp, 32
             call rbx
@@ -229,13 +248,12 @@ e6_uefi_print_uefi_string:
     push rbp                        ; Preserve RBP
     mov rbp, rsp
     and rsp, -16                    ; RSP is now 16-byte aligned
-    ; sub rsp, 32                     ; Shadow space (keeps 16-byte alignment)
 
-    lea rbx, [BSS.OutputString]    ; We're getting ready to call OutputString.
+    lea rbx, [BSS.EFI + efi.OutputString]    ; We're getting ready to call OutputString.
     mov rbx, [rbx]
 
     ; First parameter to OutputString is the pointer to the Simple Text Output Protocol.
-    lea rcx, [BSS.EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL]
+    lea rcx, [BSS.EFI + efi.SIMPLE_TEXT_OUTPUT_PROTOCOL]
     mov rcx, [rcx]
     mov rdx, rsi                    ; RSI points to the string to print which is the second parameter to OutputString.
     sub rsp, 32                     ; Shadow space
@@ -444,13 +462,9 @@ END:
 ; calculations. This section will not appear in the compiled binary executable file.  
 section .bss nobits
 BSS:
-    .EFI_IMAGE_HANDLE                 resq 1                     ; Image handle will be passed to us in RCX
-    .EFI_SYSTEM_TABLE                 resq 1                     ; System table will be passed to us in RDX
-    .EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL  resq 1                     ; The simple text output protocol
-    .ClearScreen                      resq 1                     ; Pointer to the clear screen function
-    .OutputString                     resq 1                     ; Pointer to the output string function
+    .EFI:                             resb efi_size
     .rax_hex_string                   resb 38
-    
+
     ; This is for buffering a line of memory before printing.
     ; 1. Each line begins with the address which is 8 bytes. Each byte is represented by 2 characters, and each
     ;    character occupies 2 bytes in utf16. For the address, this makes 8 x 2 x 2 = 32
