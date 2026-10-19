@@ -228,9 +228,27 @@ EntryPoint:
     lea rdi, [BSS.EFI + efi.BOOT_SERVICES_TABLE]
     mov [rdi], rbx
 
-    lea rsi, [DATA.sample_string]
-    call e6_uefi_print_uefi_string
-    mov rax, 0xB16A55CAFEBABE
+    ; Go grab LocateHandleBuffer and also store it.
+    add rbx, EFI_BOOT_SERVICES_TABLE_LocateHandleBuffer
+    mov rbx, [rbx]                        ; Get the pointer to LocateHandleBuffer
+    lea rdi, [BSS.EFI + efi.LocateHandleBuffer]
+    mov rdi, rbx
+
+    ; Next call LocateHandleBuffer
+    mov rcx, 2                                               ; First parameter is search type. 2 => Search by Protocol
+    lea rdx, [STANDARD_HEADER.EFI_BLOCK_IO_PROTOCOL_GUID]    ; Second parameter is GUID of the protocol. In this case the GUID of Block IO Protocol
+    xor r8, r8                                               ; Third parameter is search key. This is null for searcy by protocol
+    lea r9, [BSS.handle_count]                               ; Fourth parameter is where LocateHandleBuffer will store the number of handles that match the protocol
+    sub rsp, 48                                              ; Make room for the fifth parameter and shadow space
+    lea rdi, [BSS.handle_buffer]                             ; The fifth parameter which will be on the stack
+    mov [rsp + 32], rdi                                      ; Put that fifth parameter on the stack
+    call rbx
+
+    add rsp, 48
+
+    ; lea rsi, [DATA.sample_string]
+    ; call e6_uefi_print_uefi_string
+    ; mov rax, 0xB16A55CAFEBABE
     call e6_uefi_print_rax
     lea rbx, [START]
     call e6_uefi_dump_memory
@@ -476,7 +494,9 @@ END:
 ; calculations. This section will not appear in the compiled binary executable file.  
 section .bss nobits
 BSS:
-    .EFI:                             resb efi_size
+    .EFI:                             resb efi_size         ; For the efi struc
+    .handle_count:                    resq 1                ; Needed when trying to fetch handles
+    .handle_buffer:                   resq 1                ; Also needed when trying to get handles
     .rax_hex_string:                  resb 38
 
     ; This is for buffering a line of memory before printing.
