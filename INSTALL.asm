@@ -27,8 +27,8 @@ DEFAULT REL
 struc efi 
     .IMAGE_HANDLE                 resq 1                     ; Image handle will be passed to us in RCX
     .SYSTEM_TABLE                 resq 1                     ; System table will be passed to us in RDX
-    .SIMPLE_TEXT_OUTPUT_PROTOCOL  resq 1                     ; The simple text output protocol
     .BOOT_SERVICES_TABLE          resq 1                     ; The boot services table.
+    .SIMPLE_TEXT_OUTPUT_PROTOCOL  resq 1                     ; The simple text output protocol
     .ClearScreen                  resq 1                     ; Pointer to the clear screen function
     .OutputString                 resq 1                     ; Pointer to the output string function
     .LocateHandleBuffer           resq 1                     ; For the LocateHandleBuffer function will be needed to enumerate storage devices and others
@@ -216,6 +216,18 @@ HEADER_END:
 CODE:
 EntryPoint:
     call STANDARD_HEADER.pre_start
+
+    ; Get the pointer to the boot services table. We start by grabbing the systems table. From the systems table we can
+    ; get the boot services table.
+    lea rbx, [BSS.EFI + efi.SYSTEM_TABLE]
+    mov rbx, [rbx]
+    add rbx, EFI_BOOT_SERVICES_TABLE
+    mov rbx, [rbx]                        ; Now we're pointing to the boot services table.
+
+    ; Store the pointer to the boot services table in memory
+    lea rdi, [BSS.EFI + efi.BOOT_SERVICES_TABLE]
+    mov [rdi], rbx
+
     lea rsi, [DATA.sample_string]
     call e6_uefi_print_uefi_string
     mov rax, 0xB16A55CAFEBABE
@@ -465,7 +477,7 @@ END:
 section .bss nobits
 BSS:
     .EFI:                             resb efi_size
-    .rax_hex_string                   resb 38
+    .rax_hex_string:                  resb 38
 
     ; This is for buffering a line of memory before printing.
     ; 1. Each line begins with the address which is 8 bytes. Each byte is represented by 2 characters, and each
