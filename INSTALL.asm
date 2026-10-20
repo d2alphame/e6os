@@ -32,6 +32,7 @@ struc efi
     .ClearScreen                  resq 1                     ; Pointer to the clear screen function
     .OutputString                 resq 1                     ; Pointer to the output string function
     .LocateHandleBuffer           resq 1                     ; For the LocateHandleBuffer function will be needed to enumerate storage devices and others
+    .HandleProtocol               resq 1                     ; For HandleProtocol
 endstruc
 
     
@@ -232,7 +233,7 @@ EntryPoint:
     add rbx, EFI_BOOT_SERVICES_TABLE_LocateHandleBuffer
     mov rbx, [rbx]                        ; Get the pointer to LocateHandleBuffer
     lea rdi, [BSS.EFI + efi.LocateHandleBuffer]
-    mov rdi, rbx
+    mov [rdi], rbx
 
     ; Next call LocateHandleBuffer
     mov rcx, 2                                               ; First parameter is search type. 2 => Search by Protocol
@@ -243,12 +244,26 @@ EntryPoint:
     lea rdi, [BSS.handle_buffer]                             ; The fifth parameter which will be on the stack
     mov [rsp + 32], rdi                                      ; Put that fifth parameter on the stack
     call rbx
+    add rsp, 48                ; Remember to restore the stack
 
-    add rsp, 48
+    ; Go grab HandleProtocol. HandleProtocol will later be called on all the handles LocateHandleBuffer returned
+    lea rbx, [BSS.EFI + efi.BOOT_SERVICES_TABLE]
+    mov rbx, [rbx]
+    mov rbx, [rbx + EFI_BOOT_SERVICES_TABLE_HandleProtocol]  ; Get the pointer to HandleProtocol
+    lea rdi, [BSS.EFI + efi.HandleProcol]
+    mov [rdi], rbx                                           ; Store HandleProtocol
 
-    ; lea rsi, [DATA.sample_string]
-    ; call e6_uefi_print_uefi_string
-    ; mov rax, 0xB16A55CAFEBABE
+    ; Need to loop through the handles and call HandleProtocol on each handle
+    lea rcx, [BSS.handle_count]
+    mov rcx, [rcx]
+    .loop_handles:
+        
+    loop .loop_handles
+
+
+    lea rsi, [DATA.sample_string]
+    call e6_uefi_print_uefi_string
+    mov rax, 0xB16A55CAFEBABE
     call e6_uefi_print_rax
     lea rbx, [START]
     call e6_uefi_dump_memory
