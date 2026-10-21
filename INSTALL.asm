@@ -242,7 +242,7 @@ CODE:
 EntryPoint:
     call STANDARD_HEADER.pre_start
 
-    mov rax, 0
+    mov rax, 18446744073709551615
     call e6_uefi_print_rax_dec
     jmp $
 
