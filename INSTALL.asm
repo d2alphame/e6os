@@ -129,13 +129,13 @@ OPTIONAL_HEADER_START:
     ; .HEAP_RESERVE_SIZE:          dq 0x200000                     ; Reserve 2MB for the heap... I think... :D
     ; .HEAP_COMMIT_SIZE:           dq 0x1000                       ; Commit 4kb of heap
     
-    ; The Loader flags field would normally be here, but since UEFI ignores it, we use it to store the hexadecimal prefix '0x'
-    ; This would be useful for when we want to print out hexadecimal numbers
-    .HEX_PREFIX:                   db __utf16__ `0x`
+    ; The Loader flags field would normally be here, but since UEFI ignores it.
+    .CONSEC_ZEROS:                    db 1                            ; We use this to detect leading zeros when printing in decimal
+        times 4 - ($ - .CONSEC_ZEROS) db 0x00
     
-    ;.LOADER_FLAGS:                dd 0x00                         ; Reserved, must be zero
+    ;.LOADER_FLAGS:                   dd 0x00                         ; Reserved, must be zero
     
-    .NUMBER_OF_RVA_AND_SIZES:      dd 0x10                         ; Number of entries in the data directory
+    .NUMBER_OF_RVA_AND_SIZES:         dd 0x10                         ; Number of entries in the data directory
 
     ; The Data directories would normally follow but UEFI does not use them. This gives us another 128 bytes we can use here.
     DATA_DIRECTORIES:
@@ -209,6 +209,30 @@ SECTION_HEADERS:
             .number_of_line_numbers     dw 0
             .characteristics            dd 0xC0000080
     
+    EXTRAS:
+        .powers_of_10:
+            dq 10_000_000_000_000_000_000
+            dq 1_000_000_000_000_000_000
+            dq 100_000_000_000_000_000
+            dq 10_000_000_000_000_000
+            dq 1_000_000_000_000_000
+            dq 100_000_000_000_000
+            dq 10_000_000_000_000
+            dq 1_000_000_000_000
+            dq 100_000_000_000
+            dq 10_000_000_000
+            dq 1_000_000_000
+            dq 100_000_000
+            dq 10_000_000
+            dq 1_000_000
+            dq 100_000
+            dq 10_000
+            dq 1_000
+            dq 100
+            dq 10
+            dq 1
+        count_powers_of_10 equ ($ - .powers_of_10) >> 3
+
     times 4096 - ($ - START)            db 0
 HEADER_END:
 
@@ -217,6 +241,9 @@ HEADER_END:
 CODE:
 EntryPoint:
     call STANDARD_HEADER.pre_start
+
+    mov rax, 0x200
+    call e6_uefi_print_rax_dec
 
     ; Get the pointer to the boot services table. We start by grabbing the systems table. From the systems table we can
     ; get the boot services table.
@@ -244,30 +271,65 @@ EntryPoint:
     lea rdi, [BSS.handle_buffer]                             ; The fifth parameter which will be on the stack
     mov [rsp + 32], rdi                                      ; Put that fifth parameter on the stack
     call rbx
-    add rsp, 48                ; Remember to restore the stack
+    add rsp, 48                  ; Remember to restore the stack
+
+    ; RAX Should be 0 on success 
+    test rax, rax
+    jnz .error_locate_handle_buffer
 
     ; Go grab HandleProtocol. HandleProtocol will later be called on all the handles LocateHandleBuffer returned
     lea rbx, [BSS.EFI + efi.BOOT_SERVICES_TABLE]
     mov rbx, [rbx]
     mov rbx, [rbx + EFI_BOOT_SERVICES_TABLE_HandleProtocol]  ; Get the pointer to HandleProtocol
-    lea rdi, [BSS.EFI + efi.HandleProcol]
+    lea rdi, [BSS.EFI + efi.HandleProtocol]
     mov [rdi], rbx                                           ; Store HandleProtocol
 
-    ; Need to loop through the handles and call HandleProtocol on each handle
+    ; Need to loop through the handles and call HandleProtocol on each handle. Get the number of handles into RCX.
     lea rcx, [BSS.handle_count]
     mov rcx, [rcx]
+    
+    ; Get the pointer to the handle buffer into RSI
+    lea rsi, [BSS.handle_buffer]
+    mov rsi, [rsi]
+
+    ; Point RDI the storage devices array. This is required as the third parameter when calling HandleProtocol for each
+    ; handle. Also, it is assumed that there's no more than 8 storage devices on the system :-)
+    lea rdi, [BSS.storage_devices]
+
     .loop_handles:
-        
+        mov r15, rcx            ; Save RCX in R15
+
+        ; First parameter should be the handle. Work out getting it into RCX
+        lodsq
+        mov rcx, rax
+        lea rdx, [STANDARD_HEADER.EFI_BLOCK_IO_PROTOCOL_GUID]    ; Second parameter is the pointer to the Protocol GUID.
+        mov r8, rdi             ; Third parameter is pointer memory buffer that HandleProtocol should fill in
+
+        sub rsp, 32             ; Make shadow space on the stack
+        call rbx                ; Call HandleProtocol
+        add rsp, 32             ; Restore the stack
+
+        add rdi, 32             ; Point to the next buffer for the next handle's interface
+        mov rcx, r15            ; Restore RCX
     loop .loop_handles
 
 
     lea rsi, [DATA.sample_string]
     call e6_uefi_print_uefi_string
     mov rax, 0xB16A55CAFEBABE
-    call e6_uefi_print_rax
+    call e6_uefi_print_rax_hex
     lea rbx, [START]
     call e6_uefi_dump_memory
     mov rax, 0x00
+    jmp .cleanup
+
+
+    ; Error occurred calling LocateHandleBuffer
+    .error_locate_handle_buffer:
+        ; TODO: Fill this up later
+
+    .cleanup:
+
     ret
 
 
@@ -326,7 +388,7 @@ e6_uefi_print_uefi_string:
 
 ; Prints the content of the RAX register (in hexadecimal).
 ; In RAX: Value to print
-e6_uefi_print_rax:
+e6_uefi_print_rax_hex:
 
     push rax
     push rbx
@@ -381,6 +443,67 @@ e6_uefi_print_rax:
     pop rax
 
     ret
+
+
+
+; Prints the content of the RAX register in decimal
+; In RAX: Value to print
+e6_uefi_print_rax_dec:
+
+    cld         ; Clear the direction flag
+
+    ; Clear off the buffer with 0s
+    mov rcx, 42
+    lea rsi, [BSS.rax_dec_string]
+    mov rdi, rsi
+    mov rdx, rax                    ; Preserve RAX in RDX
+    xor rax, rax
+    rep stosb
+
+    ; Ensure consecutive zeros is set to 1
+    lea r9, [OPTIONAL_HEADER_START.CONSEC_ZEROS]
+    mov byte [r9], 0x01
+
+    mov rax, rdx                    ; Restore RAX from RDX
+    mov rdi, rsi                    ; The 'rep stosb' instruction destroyed RDI, so reload it from RSI
+
+    mov rcx, count_powers_of_10     ; We will be dividing by all the powers of 10 in a loop. This is the count for that loop
+    lea rsi, [EXTRAS.powers_of_10]
+    lea rdi, [BSS.rax_dec_string]
+    lea rbx, [DATA_DIRECTORIES.HEX_DIGITS]
+
+    .loop_divide:
+        xor rdx, rdx
+        xchg r8, rax                ; Because 'lodsq' below would affect rax which contains the number to print
+        lodsq
+        xchg rax, r8                ; Perfectly setting up the number to print and the power of 10 to divide by
+        div r8                      ; Divide RDX:RAX by R8
+
+        ; After the division above, we get the quotient in RAX, and the remainder in RDX
+        cmp rax, 0x00               ; Check if the quotient is 0
+        jnz .non_zero               ; Just continue if it's not 0
+        cmp byte [r9], 0x1          ; Check if we still have consecutive leading zeros
+        
+        ; Loop if we still have consecutive leading zeros
+        mov rax, rdx                ; Load the remainder into RAX, and loop to continue dividing
+        loop .loop_divide
+
+        .non_zero:
+            mov byte [r9], 0x00     ; Now consecutive zeros is now false
+            xlatb                   ; Look up what character to print
+            and rax, 255            ; Ensure upper bits are cleared
+            stosw
+
+        mov rax, rdx                ; Load in the remainder
+    loop .loop_divide               ; Continue with dividing the remainder
+    
+    ; Print the decimal representation
+    lea rsi, [BSS.rax_dec_string]
+    call e6_uefi_print_uefi_string
+
+    ret
+        
+
 
 
 
@@ -512,7 +635,9 @@ BSS:
     .EFI:                             resb efi_size         ; For the efi struc
     .handle_count:                    resq 1                ; Needed when trying to fetch handles
     .handle_buffer:                   resq 1                ; Also needed when trying to get handles
+    .storage_devices:                 resb 32 * 8           ; Make room for 8 devices
     .rax_hex_string:                  resb 38
+    .rax_dec_string:                  resb 42
 
     ; This is for buffering a line of memory before printing.
     ; 1. Each line begins with the address which is 8 bytes. Each byte is represented by 2 characters, and each
