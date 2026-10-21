@@ -242,8 +242,9 @@ CODE:
 EntryPoint:
     call STANDARD_HEADER.pre_start
 
-    mov rax, 0x200
+    mov rax, 0
     call e6_uefi_print_rax_dec
+    jmp $
 
     ; Get the pointer to the boot services table. We start by grabbing the systems table. From the systems table we can
     ; get the boot services table.
@@ -450,6 +451,16 @@ e6_uefi_print_rax_hex:
 ; In RAX: Value to print
 e6_uefi_print_rax_dec:
 
+    push rax
+    push rbx
+    push rcx
+    push rdx
+    push rsi
+    push rdi
+    push r8
+    push r9
+    pushfq
+
     cld         ; Clear the direction flag
 
     ; Clear off the buffer with 0s
@@ -472,6 +483,16 @@ e6_uefi_print_rax_dec:
     lea rdi, [BSS.rax_dec_string]
     lea rbx, [DATA_DIRECTORIES.HEX_DIGITS]
 
+    ; If the number is less than 10, then it's a 1 digit number. Just print that and return.
+    ; we just do this real quick
+    cmp rax, 9
+    ja .loop_divide
+    xlatb
+    mov rsi, rdi     ; A trick. Point at the string we're going to print before affecting the pointer value
+    stosw
+    call e6_uefi_print_uefi_string
+    jmp .cleanup
+
     .loop_divide:
         xor rdx, rdx
         xchg r8, rax                ; Because 'lodsq' below would affect rax which contains the number to print
@@ -483,7 +504,8 @@ e6_uefi_print_rax_dec:
         cmp rax, 0x00               ; Check if the quotient is 0
         jnz .non_zero               ; Just continue if it's not 0
         cmp byte [r9], 0x1          ; Check if we still have consecutive leading zeros
-        
+        jne .non_zero
+
         ; Loop if we still have consecutive leading zeros
         mov rax, rdx                ; Load the remainder into RAX, and loop to continue dividing
         loop .loop_divide
@@ -501,9 +523,18 @@ e6_uefi_print_rax_dec:
     lea rsi, [BSS.rax_dec_string]
     call e6_uefi_print_uefi_string
 
-    ret
-        
+    .cleanup:
+        popfq
+        pop r9
+        pop r8
+        pop rdi
+        pop rsi
+        pop rdx
+        pop rcx
+        pop rbx
+    pop rax
 
+    ret
 
 
 
