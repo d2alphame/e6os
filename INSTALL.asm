@@ -242,10 +242,6 @@ CODE:
 EntryPoint:
     call STANDARD_HEADER.pre_start
 
-    mov rax, 18446744073709551615
-    call e6_uefi_print_rax_dec
-    jmp $
-
     ; Get the pointer to the boot services table. We start by grabbing the systems table. From the systems table we can
     ; get the boot services table.
     lea rbx, [BSS.EFI + efi.SYSTEM_TABLE]
