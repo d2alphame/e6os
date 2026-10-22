@@ -554,6 +554,26 @@ e6_uefi_print_rax_dec:
 
 e6_uefi_print_fraction:
 
+    push rax
+    push rbx
+    push rcx
+    push rdx
+    push rsi
+    push rdi
+    push r8
+    push r9
+    push r10
+    push r11
+    pushfq
+
+    cld
+
+    ; If RCX is greater than 30 then clamp it down to 30.
+    cmp rcx, 30
+    jna .continue
+    mov rcx, 30
+
+    .continue:
     mov r8, rax                     ; Preserve RAX in R8
     mov r10, rcx                    ; Preserve RCX in R10
     mov r9, 19                      ; We have to do this dance because we can't do reverse subtraction. See the instructions that follow.
@@ -589,28 +609,40 @@ e6_uefi_print_fraction:
     mov rcx, r10
     lea rbx, [DATA_DIRECTORIES.HEX_DIGITS]
     .loop_digits:
+        ; Just before looping, check if the last loaded power of 10 we loaded is 1, then the only reason we're still in 
+        ; this loop is because there's need to pad with more zeros (as specified by the parameter passed in RCX). So
+        ; keep dividing by 1 till padded with enough zeros
+        cmp r9, 1
+        jne .loop_continue
+        sub rsi, 8                    ; Move rsi, backward to the 1, we loaded last.
+        .loop_continue:
+
         lodsq                          ; Load the next power of 10 to divide by. RSI already points to it. 
-        mov r8, rax                    ; Store it in r8
+        mov r9, rax                    ; Store it in r8
         mov rax, rdx                   ; Load the remainder from rdx into rax
         xor rdx, rdx                   ; Ensure rdx is 0
-        div r8                         ; Do the division
+        div r9                         ; Do the division
         xlatb                          ; Read in the character to print
         and rax, 255
         stosw
 
-        ; Just before looping, check if the last loaded power of 10 we loaded is 1, then the only reason we're still in 
-        ; this loop is because there's need to pad with more zeros (as specified by the parameter passed in RCX). So
-        ; keep dividing by 1 till padded with enough zeros
-        cmp r8, 1
-        jne .loop_continue
-        sub rsi, 8                    ; Move rsi, backward to the 1, we loaded last.
-        .loop_continue:
     loop .loop_digits
 
     mov rsi, r11                      ; Remember R11 already points to the fraction's string to print. Simply put it in RSI
     call e6_uefi_print_uefi_string
 
     .cleanup:
+        popfq
+        pop r11
+        pop r10
+        pop r9
+        pop r8
+        pop rdi
+        pop rsi
+        pop rdx
+        pop rcx
+        pop rbx
+        pop rax
 
         ret
 
