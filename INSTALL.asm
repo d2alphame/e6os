@@ -242,6 +242,13 @@ CODE:
 EntryPoint:
     call STANDARD_HEADER.pre_start
 
+
+    mov rax, 98576
+    mov rcx, 0
+    mov rdx, 2
+    call e6_uefi_print_fraction
+    jmp $
+
     ; Get the pointer to the boot services table. We start by grabbing the systems table. From the systems table we can
     ; get the boot services table.
     lea rbx, [BSS.EFI + efi.SYSTEM_TABLE]
@@ -534,6 +541,62 @@ e6_uefi_print_rax_dec:
 
 
 
+; Prints out a fractional number
+; In RAX: The number
+; In RDX: The power of 10 to divide it by
+; In RCX: Number of digits after the decimal point to print
+; 
+; For example: if RAX = 9876, and RDX = 2, then it will print
+;   the result 9876 / (10^2) = 9876/100 = 98.76
+;   If RCX was set to say, 1. The result would be 1 digit after the decimal point (98.7)
+;   If RCX was set to, for example, 4, the would now be 98.7600
+;   If RCX is 0, it would only print out the integer part of the division.
+
+e6_uefi_print_fraction:
+
+    mov r8, rax                     ; Preserve RAX in R8
+    mov r10, rcx                    ; Preserve RCX in R10
+    mov r9, 19                      ; We have to do this dance because we can't do reverse subtraction. See the instructions that follow.
+    sub r9, rdx                     ; Now we have the index of the power of 10 to divide by stored in R9
+
+    ; Point RSI at the power of 10 to start dividing with. We have a powers of 10 table
+    lea rsi, [EXTRAS.powers_of_10]
+    lea rsi, [rsi + r9 * 8]
+    lodsq
+    mov r9, rax                     ; Loaded the power of 10 to divide by
+    mov rax, r8                     ; Reload the number that was passed to us from R8 where we saved it earlier
+    xor rdx, rdx                    ; Necessary for the division that follows
+    div r9                          ; Integer part in RAX, remainder in RDX
+    call e6_uefi_print_rax_dec      ; Go print the integer part first
+    
+    ; If RCX is 0, then it means the user doesn't want the fractional part at all
+    cmp rcx, 0
+    jz .cleanup
+
+    ; First clear the print buffer to zeros
+    mov rcx, 64
+    lea rdi, [BSS.rax_fraction_string]
+    mov r11, rdi     ; We're saving RDI for later
+    xor rax, rax
+    rep stosb
+    
+    ; Next write the "." into the buffer. We're printing a fraction after all
+    mov al, "."
+    mov rdi, r11     ; Restore RDI
+    stosw
+
+    jmp $
+
+    .cleanup:
+
+        ret
+
+
+
+
+
+
+
 ; Prints the content of a block of 256 bytes of memory.
 ; In RBX: Pointer to memory address to dump.
 e6_uefi_dump_memory:
@@ -665,6 +728,13 @@ BSS:
     .storage_devices:                 resb 32 * 8           ; Make room for 8 devices
     .rax_hex_string:                  resb 38
     .rax_dec_string:                  resb 42
+
+    ; At 2 bytes per character (utf16) this leaves room for 32 characters. We use 1 character for the "." and 1
+    ; for null (UEFI strings are null terminated), we still 30 characters left for the decimal digits. I'm not sure I
+    ; know anyone who would find that level of precision useful.
+
+    .rax_fraction_string:             resb 64
+
 
     ; This is for buffering a line of memory before printing.
     ; 1. Each line begins with the address which is 8 bytes. Each byte is represented by 2 characters, and each
