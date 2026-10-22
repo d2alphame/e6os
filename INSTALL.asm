@@ -244,7 +244,7 @@ EntryPoint:
 
 
     mov rax, 98576
-    mov rcx, 0
+    mov rcx, 3
     mov rdx, 2
     call e6_uefi_print_fraction
     jmp $
@@ -582,10 +582,33 @@ e6_uefi_print_fraction:
     
     ; Next write the "." into the buffer. We're printing a fraction after all
     mov al, "."
-    mov rdi, r11     ; Restore RDI
+    mov rdi, r11                       ; Restore RDI
     stosw
 
-    jmp $
+    ; Restore RCX from R10
+    mov rcx, r10
+    lea rbx, [DATA_DIRECTORIES.HEX_DIGITS]
+    .loop_digits:
+        lodsq                          ; Load the next power of 10 to divide by. RSI already points to it. 
+        mov r8, rax                    ; Store it in r8
+        mov rax, rdx                   ; Load the remainder from rdx into rax
+        xor rdx, rdx                   ; Ensure rdx is 0
+        div r8                         ; Do the division
+        xlatb                          ; Read in the character to print
+        and rax, 255
+        stosw
+
+        ; Just before looping, check if the last loaded power of 10 we loaded is 1, then the only reason we're still in 
+        ; this loop is because there's need to pad with more zeros (as specified by the parameter passed in RCX). So
+        ; keep dividing by 1 till padded with enough zeros
+        cmp r8, 1
+        jne .loop_continue
+        sub rsi, 8                    ; Move rsi, backward to the 1, we loaded last.
+        .loop_continue:
+    loop .loop_digits
+
+    mov rsi, r11                      ; Remember R11 already points to the fraction's string to print. Simply put it in RSI
+    call e6_uefi_print_uefi_string
 
     .cleanup:
 
