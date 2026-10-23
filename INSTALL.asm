@@ -242,10 +242,9 @@ CODE:
 EntryPoint:
     call STANDARD_HEADER.pre_start
 
-
     mov rax, 98576
     mov rcx, 3
-    mov rdx, 2
+    mov rdx, 0
     call e6_uefi_print_fraction
     jmp $
 
@@ -549,7 +548,7 @@ e6_uefi_print_rax_dec:
 ; For example: if RAX = 9876, and RDX = 2, then it will print
 ;   the result 9876 / (10^2) = 9876/100 = 98.76
 ;   If RCX was set to say, 1. The result would be 1 digit after the decimal point (98.7)
-;   If RCX was set to, for example, 4, the would now be 98.7600
+;   If RCX was set to, for example, 4, the result would now be 98.7600
 ;   If RCX is 0, it would only print out the integer part of the division.
 
 e6_uefi_print_fraction:
@@ -568,14 +567,37 @@ e6_uefi_print_fraction:
 
     cld
 
-    ; If RCX is greater than 30 then clamp it down to 30.
+    mov r8, rax                             ; Preserve RAX in R8
+    lea r11, [BSS.rax_fraction_string]      ; Load up the addy of the print buffer. Whenever we need it, we fetch it from here.
+    lea rbx, [DATA_DIRECTORIES.HEX_DIGITS]
+    mov r10, rcx                            ; Preserve RCX in R10
+
+    ; Clear off the print buffer with nulls
+    mov rdi, r11
+    mov rcx, 64
+    xor rax, rax
+    rep stosb
+
+    ; If RCX is greater than 30 then clip it at 30.
+    mov rcx, r10                            ; Restore RCX from R10
     cmp rcx, 30
     jna .continue
     mov rcx, 30
 
     .continue:
-    mov r8, rax                     ; Preserve RAX in R8
-    mov r10, rcx                    ; Preserve RCX in R10
+    ; Check if RDX is greater than 19 just continue as normal if it's less
+    cmp rdx, 19
+    jna .not_too_large
+    xor rax, rax                            ; If RDX is greater than 19, then the integer of the result is always 0 
+    mov rdi, r11
+    xlatb
+    and rax, 255
+    stosw
+    ; Print that lone zero in the integer
+    mov rsi, r11
+    call e6_uefi_print_uefi_string
+
+    .not_too_large:
     mov r9, 19                      ; We have to do this dance because we can't do reverse subtraction. See the instructions that follow.
     sub r9, rdx                     ; Now we have the index of the power of 10 to divide by stored in R9
 
@@ -592,13 +614,6 @@ e6_uefi_print_fraction:
     ; If RCX is 0, then it means the user doesn't want the fractional part at all
     cmp rcx, 0
     jz .cleanup
-
-    ; First clear the print buffer to zeros
-    mov rcx, 64
-    lea rdi, [BSS.rax_fraction_string]
-    mov r11, rdi     ; We're saving RDI for later
-    xor rax, rax
-    rep stosb
     
     ; Next write the "." into the buffer. We're printing a fraction after all
     mov al, "."
@@ -645,10 +660,6 @@ e6_uefi_print_fraction:
         pop rax
 
         ret
-
-
-
-
 
 
 
