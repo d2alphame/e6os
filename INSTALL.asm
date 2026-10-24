@@ -586,53 +586,41 @@ e6_uefi_print_fraction:
     rep stosb
 
     ; If RCX is greater than 30 then clip it at 30.
-    mov rcx, r10                            ; Restore RCX from R10
+    mov rcx, r10                              ; Restore RCX from R10
     cmp rcx, 30
     jna .continue
     mov rcx, 30
 
     .continue:
-    ; Check if RDX is greater than 19 just continue as normal if it's less
+    ; Do this if RDX is greater than 19, otherwise just continue as normal if it's less
     cmp rdx, 19
-    jna .not_too_large                      ; RDX is less than or equal to 19
-    xor rax, rax                            ; If RDX is greater than 19, then the integer of the result is always 0 
-    mov rdi, r11
-    xlatb
-    and rax, 255
-    stosw
-    ; Print that lone zero in the integer
-    mov rsi, r11
-    call e6_uefi_print_uefi_string
-    mov r13, 1                             ; Meaning the integer has been printed
-
-
-    lea rsi, [EXTRAS.test_string]
-    call e6_uefi_print_uefi_string
-    jmp $
-
-
+    jna .not_too_large                          ; RDX is less than or equal to 19
+    
     mov r12, rdx
-    sub r12, 20                            ; Figure out the number of zeros just after the decimal point before dividing by 10^19
-    mov rdx, 19                            ; Clip RDX to the maximum power of 10 we can handle
+    sub r12, 20                                 ; Figure out the number of zeros just after the decimal point before dividing by 10^19
+    
+    xor rax, rax                                ; If RDX is greater than 19, then the integer of the result is always 0 
+    call e6_uefi_print_rax_dec                  ; Go print the integer part
+    
+    mov rdx, r8                                 ; Load in the number as the remainder
+    lea rsi, [EXTRAS.powers_of_10]              ; Start dividing from 10^19
+    jmp .integer_already_printed
 
     .not_too_large:
-    mov r9, 19                             ; We have to do this dance because we can't do reverse subtraction. See the instruction that follows.
-    sub r9, rdx                            ; Now we have the index of the power of 10 to divide by stored in R9
-
-    ; This part can be skipped if the integer part has been printed already
-    cmp r13, 0
-    jnz .integer_already_printed
+    mov r9, 19                                  ; We have to do this dance because we can't do reverse subtraction. See the instruction that follows.
+    sub r9, rdx                                 ; Now we have the index of the power of 10 to divide by stored in R9
 
     ; Point RSI at the power of 10 to start dividing with. We have a powers of 10 table
     lea rsi, [EXTRAS.powers_of_10]
     lea rsi, [rsi + r9 * 8]
     lodsq
+
     mov r9, rax                     ; Loaded the power of 10 to divide by
     mov rax, r8                     ; Reload the number that was passed to us from R8 where we saved it earlier
     xor rdx, rdx                    ; Necessary for the division that follows
     div r9                          ; Integer part in RAX, remainder in RDX
     call e6_uefi_print_rax_dec      ; Go print the integer part first
-    
+
     .integer_already_printed:
 
     ; If R10 is 0, then it means the user doesn't want the fractional part at all. Remember the original value of RCX
@@ -655,7 +643,7 @@ e6_uefi_print_fraction:
 
         xor rax, rax
         xlatb
-        stosb
+        stosw
         dec r12
         loop .loop_digits
         jrcxz .loop_digits_end
