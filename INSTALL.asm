@@ -572,24 +572,25 @@ e6_uefi_print_fraction:
 
     cld
 
-    mov r8, rax                             ; Preserve RAX in R8
-    lea r11, [BSS.rax_fraction_string]      ; Load up the addy of the print buffer into R11. Whenever we need it, we fetch it from the register.
+    mov r8, rax                                 ; Preserve RAX in R8
+    lea r11, [BSS.rax_fraction_string]          ; Load up the addy of the print buffer into R11. Whenever we need it, we fetch it from the register.
     lea rbx, [DATA_DIRECTORIES.HEX_DIGITS]
-    mov r10, rcx                            ; Preserve RCX in R10
+    mov r10, rcx                                ; Preserve RCX in R10
     xor r12, r12
-    xor r13, r13                            ; Set this to 1, if the integer has already been printed
+    xor r13, r13                                ; Set this to 1, if the integer has already been printed
 
     ; Clear off the print buffer with nulls
-    mov rdi, r11                            ; Ao tii ko'fa s'ile, ifa tin' se
+    mov rdi, r11                                ; Ao tii ko'fa s'ile, ifa tin' se
     mov rcx, 64
     xor rax, rax
     rep stosb
 
     ; If RCX is greater than 30 then clip it at 30.
-    mov rcx, r10                              ; Restore RCX from R10
+    mov rcx, r10                                ; Restore RCX from R10
     cmp rcx, 30
     jna .continue
     mov rcx, 30
+    mov r10, rcx                                ; Preserve this new value of RCX
 
     .continue:
     ; Do this if RDX is greater than 19, otherwise just continue as normal if it's less
