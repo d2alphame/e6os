@@ -120,18 +120,15 @@ OPTIONAL_HEADER_START:
     .DLL_CHARACTERISTICS:        dw 0b000011110010000            ; I honestly don't know what to put here
 
     ; UEFI doesn't use the following fields: stack size to reserve, stack size to commit, heap size to reserve, and heap size to commit. At 8 bytes each, this gives
-    ; us 32 bytes we can use.
+    ; us 32 bytes we can use. Loader flags is 4 bytes that makes a total of 36 bytes for use.
     .BOOT_MESSAGE_CONT:              db __utf16__ `0 INSTALLER\r\n\0`  ; Continuation of the installer boot message
-        times 32 - ($ - .BOOT_MESSAGE_CONT) db 0                       ; Padd with zeros up to 32 bytes
+    .NEWLINE:                        db __utf16__ `\r\n\0`             ; For when it's time to print new line
+        times 36 - ($ - .BOOT_MESSAGE_CONT) db 0                       ; Padd with zeros up to 32 bytes
 
-    ; .STACK_RESERVE_SIZE:         dq 0x200000                     ; Reserve 2MB for the stack... I guess...
-    ; .STACK_COMMIT_SIZE:          dq 0x1000                       ; Commit 4kb of the stack
-    ; .HEAP_RESERVE_SIZE:          dq 0x200000                     ; Reserve 2MB for the heap... I think... :D
-    ; .HEAP_COMMIT_SIZE:           dq 0x1000                       ; Commit 4kb of heap
-    
-    ; The Loader flags field would normally be here, but since UEFI ignores it.
-    .CONSEC_ZEROS:                    db 1                            ; We use this to detect leading zeros when printing in decimal
-        times 4 - ($ - .CONSEC_ZEROS) db 0x00
+    ; .STACK_RESERVE_SIZE:         dq 0x200000                         ; Reserve 2MB for the stack... I guess...
+    ; .STACK_COMMIT_SIZE:          dq 0x1000                           ; Commit 4kb of the stack
+    ; .HEAP_RESERVE_SIZE:          dq 0x200000                         ; Reserve 2MB for the heap... I think... :D
+    ; .HEAP_COMMIT_SIZE:           dq 0x1000                           ; Commit 4kb of heap
     
     ;.LOADER_FLAGS:                   dd 0x00                         ; Reserved, must be zero
     
@@ -244,13 +241,6 @@ CODE:
 EntryPoint:
     call STANDARD_HEADER.pre_start
 
-    xor rax, rax
-    not rax
-    mov rcx, 8
-    mov rdx, 21
-    call e6_uefi_print_fraction
-    jmp $
-
     ; Get the pointer to the boot services table. We start by grabbing the systems table. From the systems table we can
     ; get the boot services table.
     lea rbx, [BSS.EFI + efi.SYSTEM_TABLE]
@@ -277,7 +267,7 @@ EntryPoint:
     lea rdi, [BSS.handle_buffer]                             ; The fifth parameter which will be on the stack
     mov [rsp + 32], rdi                                      ; Put that fifth parameter on the stack
     call rbx
-    add rsp, 48                  ; Remember to restore the stack
+    add rsp, 48                  ; Remember to restore the stack upon return
 
     ; RAX Should be 0 on success 
     test rax, rax
@@ -298,7 +288,7 @@ EntryPoint:
     lea rsi, [BSS.handle_buffer]
     mov rsi, [rsi]
 
-    ; Point RDI the storage devices array. This is required as the third parameter when calling HandleProtocol for each
+    ; Point RDI to the storage devices array. This is required as the third parameter when calling HandleProtocol for each
     ; handle. Also, it is assumed that there's no more than 8 storage devices on the system :-)
     lea rdi, [BSS.storage_devices]
 
@@ -320,14 +310,14 @@ EntryPoint:
     loop .loop_handles
 
 
-    lea rsi, [DATA.sample_string]
-    call e6_uefi_print_uefi_string
-    mov rax, 0xB16A55CAFEBABE
-    call e6_uefi_print_rax_hex
-    lea rbx, [START]
-    call e6_uefi_dump_memory
-    mov rax, 0x00
-    jmp .cleanup
+    ; lea rsi, [DATA.sample_string]
+    ; call e6_uefi_print_uefi_string
+    ; mov rax, 0xB16A55CAFEBABE
+    ; call e6_uefi_print_rax_hex
+    ; lea rbx, [START]
+    ; call e6_uefi_dump_memory
+    ; mov rax, 0x00
+    ; jmp .cleanup
 
 
     ; Error occurred calling LocateHandleBuffer
@@ -477,8 +467,9 @@ e6_uefi_print_rax_dec:
     rep stosb
 
     ; Ensure consecutive zeros is set to 1
-    lea r9, [OPTIONAL_HEADER_START.CONSEC_ZEROS]
-    mov byte [r9], 0x01
+    ; lea r9, [OPTIONAL_HEADER_START.CONSEC_ZEROS]
+    ; mov byte [r9], 0x01
+    mov r9, 0x01                    ; Use the R9 register for tracking consecutive zeros. Clear this to zero when a non-zero number is encountered.
 
     mov rax, rdx                    ; Restore RAX from RDX
     mov rdi, rsi                    ; The 'rep stosb' instruction destroyed RDI, so reload it from RSI
@@ -508,7 +499,7 @@ e6_uefi_print_rax_dec:
         ; After the division above, we get the quotient in RAX, and the remainder in RDX
         cmp rax, 0x00               ; Check if the quotient is 0
         jnz .non_zero               ; Just continue if it's not 0
-        cmp byte [r9], 0x1          ; Check if we still have consecutive leading zeros
+        cmp r9, 0x01                ; Check if we still have consecutive leading zeros
         jne .non_zero
 
         ; Loop if we still have consecutive leading zeros
@@ -516,7 +507,7 @@ e6_uefi_print_rax_dec:
         loop .loop_divide
 
         .non_zero:
-            mov byte [r9], 0x00     ; Now consecutive zeros is now false
+            xor r9, r9              ; Now consecutive zeros is now false
             xlatb                   ; Look up what character to print
             and rax, 255            ; Ensure upper bits are cleared
             stosw
