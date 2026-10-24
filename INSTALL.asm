@@ -233,6 +233,8 @@ SECTION_HEADERS:
             dq 1
         count_powers_of_10 equ ($ - .powers_of_10) >> 3
 
+        .test_string: db __utf16__ `This is a test\0`      ; String for doing tests during development.
+
     times 4096 - ($ - START)            db 0
 HEADER_END:
 
@@ -242,9 +244,10 @@ CODE:
 EntryPoint:
     call STANDARD_HEADER.pre_start
 
-    mov rax, 98576
-    mov rcx, 3
-    mov rdx, 26
+    xor rax, rax
+    not rax
+    mov rcx, 8
+    mov rdx, 21
     call e6_uefi_print_fraction
     jmp $
 
@@ -602,6 +605,12 @@ e6_uefi_print_fraction:
     call e6_uefi_print_uefi_string
     mov r13, 1                             ; Meaning the integer has been printed
 
+
+    lea rsi, [EXTRAS.test_string]
+    call e6_uefi_print_uefi_string
+    jmp $
+
+
     mov r12, rdx
     sub r12, 20                            ; Figure out the number of zeros just after the decimal point before dividing by 10^19
     mov rdx, 19                            ; Clip RDX to the maximum power of 10 we can handle
@@ -609,6 +618,10 @@ e6_uefi_print_fraction:
     .not_too_large:
     mov r9, 19                             ; We have to do this dance because we can't do reverse subtraction. See the instruction that follows.
     sub r9, rdx                            ; Now we have the index of the power of 10 to divide by stored in R9
+
+    ; This part can be skipped if the integer part has been printed already
+    cmp r13, 0
+    jnz .integer_already_printed
 
     ; Point RSI at the power of 10 to start dividing with. We have a powers of 10 table
     lea rsi, [EXTRAS.powers_of_10]
@@ -620,11 +633,12 @@ e6_uefi_print_fraction:
     div r9                          ; Integer part in RAX, remainder in RDX
     call e6_uefi_print_rax_dec      ; Go print the integer part first
     
+    .integer_already_printed:
+
     ; If R10 is 0, then it means the user doesn't want the fractional part at all. Remember the original value of RCX
     ; (which the user passed) is preserved in R10.
     cmp r10, 0
     jz .cleanup
-    
 
     ; Next write the "." into the buffer. We're printing a fraction after all
     mov al, "."
@@ -644,6 +658,7 @@ e6_uefi_print_fraction:
         stosb
         dec r12
         loop .loop_digits
+        jrcxz .loop_digits_end
 
         .continue_divide:
         
@@ -665,6 +680,7 @@ e6_uefi_print_fraction:
         stosw
 
     loop .loop_digits
+    .loop_digits_end:
 
     mov rsi, r11                      ; Remember R11 already points to the fraction's string to print. Simply put it in RSI
     call e6_uefi_print_uefi_string
