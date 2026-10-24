@@ -630,8 +630,8 @@ e6_uefi_print_fraction:
     jz .cleanup
 
     ; Next write the "." into the buffer. We're printing a fraction after all
-    mov al, "."
-    mov rdi, r11                       ; Restore RDI
+    mov ax, "."
+    mov rdi, r11                            ; Restore RDI
     stosw
 
     ; Restore RCX from R10
