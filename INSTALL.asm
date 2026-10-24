@@ -120,7 +120,7 @@ OPTIONAL_HEADER_START:
     .DLL_CHARACTERISTICS:        dw 0b000011110010000            ; I honestly don't know what to put here
 
     ; UEFI doesn't use the following fields: stack size to reserve, stack size to commit, heap size to reserve, and heap size to commit. At 8 bytes each, this gives
-    ; us 32 bytes we can use. Loader flags is 4 bytes that makes a total of 36 bytes for use.
+    ; us 32 bytes we can use. Loader flags also gives us an additional 4 bytes that makes a total of 36 bytes for use.
     .BOOT_MESSAGE_CONT:              db __utf16__ `0 INSTALLER\r\n\0`  ; Continuation of the installer boot message
     .NEWLINE:                        db __utf16__ `\r\n\0`             ; For when it's time to print new line
         times 36 - ($ - .BOOT_MESSAGE_CONT) db 0                       ; Padd with zeros up to 32 bytes
@@ -307,6 +307,9 @@ EntryPoint:
 
         add rdi, 32             ; Point to the next buffer for the next handle's interface
         mov rcx, r15            ; Restore RCX
+
+
+
     loop .loop_handles
 
 
@@ -377,6 +380,17 @@ e6_uefi_print_uefi_string:
     pop rcx
     pop rbx
     pop rax
+
+    ret
+
+
+
+; Prints new line. In UEFI, newline is \r\n
+e6_uefi_print_newline:
+    push rsi
+    lea rsi, [OPTIONAL_HEADER_START.NEWLINE]
+    call e6_uefi_print_uefi_string
+    pop rsi
 
     ret
 
