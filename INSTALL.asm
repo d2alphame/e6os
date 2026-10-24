@@ -244,7 +244,7 @@ EntryPoint:
 
     mov rax, 98576
     mov rcx, 3
-    mov rdx, 0
+    mov rdx, 26
     call e6_uefi_print_fraction
     jmp $
 
@@ -563,17 +563,21 @@ e6_uefi_print_fraction:
     push r9
     push r10
     push r11
+    push r12
+    push r13
     pushfq
 
     cld
 
     mov r8, rax                             ; Preserve RAX in R8
-    lea r11, [BSS.rax_fraction_string]      ; Load up the addy of the print buffer. Whenever we need it, we fetch it from here.
+    lea r11, [BSS.rax_fraction_string]      ; Load up the addy of the print buffer into R11. Whenever we need it, we fetch it from the register.
     lea rbx, [DATA_DIRECTORIES.HEX_DIGITS]
     mov r10, rcx                            ; Preserve RCX in R10
+    xor r12, r12
+    xor r13, r13                            ; Set this to 1, if the integer has already been printed
 
     ; Clear off the print buffer with nulls
-    mov rdi, r11
+    mov rdi, r11                            ; Ao tii ko'fa s'ile, ifa tin' se
     mov rcx, 64
     xor rax, rax
     rep stosb
@@ -587,7 +591,7 @@ e6_uefi_print_fraction:
     .continue:
     ; Check if RDX is greater than 19 just continue as normal if it's less
     cmp rdx, 19
-    jna .not_too_large
+    jna .not_too_large                      ; RDX is less than or equal to 19
     xor rax, rax                            ; If RDX is greater than 19, then the integer of the result is always 0 
     mov rdi, r11
     xlatb
@@ -596,10 +600,15 @@ e6_uefi_print_fraction:
     ; Print that lone zero in the integer
     mov rsi, r11
     call e6_uefi_print_uefi_string
+    mov r13, 1                             ; Meaning the integer has been printed
+
+    mov r12, rdx
+    sub r12, 20                            ; Figure out the number of zeros just after the decimal point before dividing by 10^19
+    mov rdx, 19                            ; Clip RDX to the maximum power of 10 we can handle
 
     .not_too_large:
-    mov r9, 19                      ; We have to do this dance because we can't do reverse subtraction. See the instructions that follow.
-    sub r9, rdx                     ; Now we have the index of the power of 10 to divide by stored in R9
+    mov r9, 19                             ; We have to do this dance because we can't do reverse subtraction. See the instruction that follows.
+    sub r9, rdx                            ; Now we have the index of the power of 10 to divide by stored in R9
 
     ; Point RSI at the power of 10 to start dividing with. We have a powers of 10 table
     lea rsi, [EXTRAS.powers_of_10]
@@ -611,10 +620,12 @@ e6_uefi_print_fraction:
     div r9                          ; Integer part in RAX, remainder in RDX
     call e6_uefi_print_rax_dec      ; Go print the integer part first
     
-    ; If RCX is 0, then it means the user doesn't want the fractional part at all
-    cmp rcx, 0
+    ; If R10 is 0, then it means the user doesn't want the fractional part at all. Remember the original value of RCX
+    ; (which the user passed) is preserved in R10.
+    cmp r10, 0
     jz .cleanup
     
+
     ; Next write the "." into the buffer. We're printing a fraction after all
     mov al, "."
     mov rdi, r11                       ; Restore RDI
@@ -622,16 +633,28 @@ e6_uefi_print_fraction:
 
     ; Restore RCX from R10
     mov rcx, r10
-    lea rbx, [DATA_DIRECTORIES.HEX_DIGITS]
     .loop_digits:
+
+        ; If r12 is 0, then we're done printing padding zeros i.e. the zeros immediately after the decimal point
+        cmp r12, 0
+        jz .continue_divide
+
+        xor rax, rax
+        xlatb
+        stosb
+        dec r12
+        loop .loop_digits
+
+        .continue_divide:
+        
         ; Just before looping, check if the last loaded power of 10 we loaded is 1, then the only reason we're still in 
         ; this loop is because there's need to pad with more zeros (as specified by the parameter passed in RCX). So
         ; keep dividing by 1 till padded with enough zeros
         cmp r9, 1
         jne .loop_continue
-        sub rsi, 8                    ; Move rsi, backward to the 1, we loaded last.
+        sub rsi, 8                     ; Move rsi, backward to the 1, we loaded last.
+        
         .loop_continue:
-
         lodsq                          ; Load the next power of 10 to divide by. RSI already points to it. 
         mov r9, rax                    ; Store it in r8
         mov rax, rdx                   ; Load the remainder from rdx into rax
@@ -648,6 +671,8 @@ e6_uefi_print_fraction:
 
     .cleanup:
         popfq
+        pop r13
+        pop r12
         pop r11
         pop r10
         pop r9
@@ -751,14 +776,15 @@ e6_uefi_dump_memory:
         pop rcx
         loop .process_bytes
 
+        popfq
         clc
         jmp .cleanup
     
     .unaligned:
+        popfq
         stc
 
     .cleanup:
-        popfq
         pop rdi
         pop rsi
         pop r11
