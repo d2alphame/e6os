@@ -113,11 +113,11 @@ OPTIONAL_HEADER_START:
     ; .MINOR_SUBSYSTEM_VERSION:    dw 0x00                         ;
     ; .WIN32_VERSION_VALUE:        dd 0x00                         ; Reserved, must be 0
     
-    .IMAGE_SIZE:                 dd 0x3000                       ; The size in bytes of the image when loaded in memory including all headers
-    .HEADERS_SIZE:               dd HEADER_END - HEADER_START    ; Size of all the headers
-    .CHECKSUM:                   dd 0x00                         ; Hoping this doesn't break the application
-    .SUBSYSTEM:                  dw 10                           ; The subsystem. In this case we're making a UEFI application.
-    .DLL_CHARACTERISTICS:        dw 0b000011110010000            ; I honestly don't know what to put here
+    .IMAGE_SIZE:                 dd 0x3000                              ; The size in bytes of the image when loaded in memory including all headers
+    .HEADERS_SIZE:               dd HEADER_END - HEADER_START           ; Size of all the headers
+    .CHECKSUM:                   dd 0x00                                ; Hoping this doesn't break the application
+    .SUBSYSTEM:                  dw 10                                  ; The subsystem. In this case we're making a UEFI application.
+    .DLL_CHARACTERISTICS:        dw 0b000011110010000                   ; I honestly don't know what to put here
 
     ; UEFI doesn't use the following fields: stack size to reserve, stack size to commit, heap size to reserve, and heap size to commit. At 8 bytes each, this gives
     ; us 32 bytes we can use. Loader flags also gives us an additional 4 bytes that makes a total of 36 bytes for use.
@@ -136,13 +136,13 @@ OPTIONAL_HEADER_START:
 
     ; The Data directories would normally follow but UEFI does not use them. This gives us another 128 bytes we can use here.
     DATA_DIRECTORIES:
-        .HEX_DIGITS:              db '0123456789ABCDEF'            ; The hex digits for when we want to print hexadecimal numbers
-            times 32 - ($ - DATA_DIRECTORIES) db 0                 ; Pad up to the Security Data Directory entry
+        .HEX_DIGITS:              db '0123456789ABCDEF'               ; The hex digits for when we want to print hexadecimal numbers
+            times 32 - ($ - DATA_DIRECTORIES) db 0                    ; Pad up to the Security Data Directory entry
 
         .SECURITY:
-            times 8 db 0                                            ; Pad with zeros for now. We'll use proper values when we're ready for secure boot
+            times 8 db 0                                              ; Pad with zeros for now. We'll use proper values when we're ready for secure boot
         .BASE_RELOC:
-            times 8 db 0                                            ; Putting this here to ensure it's zeros
+            times 8 db 0                                              ; Putting this here to ensure it's zeros
 
         .pre_start_continue:
             ; Store the pointer to clear screen
@@ -307,8 +307,6 @@ EntryPoint:
 
         add rdi, 32             ; Point to the next buffer for the next handle's interface
         mov rcx, r15            ; Restore RCX
-
-
 
     loop .loop_handles
 

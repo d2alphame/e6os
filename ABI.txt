@@ -144,3 +144,26 @@ jnz .bad_checksum  ; If the result is not zero, then the checksum is bad.
 
 .bad_checksum:
 ; ...yada, yada
+
+
+Program Information
+
+E6 provides the following information to loaded programs. This information is provided at memory address 0x200000 (the 2MB mark).
+Offset | Size (bytes) | Description 
++0     | 1            | Major version of the e6 os that loaded the program
++1     | 1            | Minor version of the e6 os that loaded the program
++2     | 2            | Flags. See full description below
++4     | 2            | Pointer to tiny string. The exact command line that was used to launch the program
++6     | 2            | Pointer to tiny string. Full file path to the executable binary file
++8     | 2            | Pointer to tiny string. Full path to the file for stdin.
++10    | 2            | Pointer to tiny string. Full path to the file for stdout.
++12    | 2            | Pointer to tiny string. Full path to the file for stderr.
++14    | 2            | Pointer to tiny string. Full path to current directory. The directory from which the program was launched.
++16 etc|              | The jump table starts here.
+
+Flags
+Flag | Name       | Description
+0    | Autoloaded | 1: Program was automatically loaded by e6 on startup. 0: Program was manually run by user or script
+1    | No-stdin   | 1: STDIN is a file. 0: STDIN is a terminal
+2    | No-stdout  | 1: STDOUT is a file. 0: STDOUT is a terminal
+3    | No-stderr  | 1: STDERR is a file. 0: STDOUT is a terminal
