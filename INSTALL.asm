@@ -40,7 +40,7 @@ START:
 HEADER_START:
 STANDARD_HEADER:
     .DOS_SIGNATURE:              db "MZ"                                                             ; DOS Signature. This is required
-
+    .GB:                         db __utf16__ `GB\0`                                                 ; Needed for when it's time to print disk sizes.
         align 8
         .EFI_BLOCK_IO_PROTOCOL_GUID:
             dd 0x964E5B21
@@ -693,6 +693,17 @@ e6_uefi_print_fraction:
         pop rax
 
         ret
+
+
+
+; Prints out a number in RAX. Pads with a number of spaces up to the desired number of digits.
+; In RAX: The number to print
+; In RCX: The maximum of digits to print. This is the amount of screen space the number should occupy.
+;
+; In other words leading, insignificant zeros are padded with spaces.
+; Example. If RAX = 192, and RCX = 5, this prints [  ]192 (that's 2 spaces followed by the digits 192.)
+
+
 
 
 
