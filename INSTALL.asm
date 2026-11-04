@@ -245,6 +245,8 @@ EntryPoint:
 
     mov rax, 1024
     mov rcx, 6
+    ; mov rax, 9
+    ; mov rcx, 2
     call e6_uefi_print_rax_dec_padded
 
 
@@ -723,6 +725,7 @@ e6_uefi_print_rax_dec_padded:
     ; Check that the number passed in RAX is less than 10^(RCX)
     mov rdx, highest_power_of_10
     sub rdx, rcx
+    inc rdx                  ; DO NOT DELETE OR CHANGE THIS. Apparently an extra padding space gets printed without this line
     
     ; Point RSI to the highest power of 10 to start dividing by. 
     lea rsi, [EXTRAS.powers_of_10]
@@ -754,7 +757,7 @@ e6_uefi_print_rax_dec_padded:
         ; For the initial zeros, put a space character in the print buffer
         mov rbx, rax                     ; Quick preservation of RAX before we continue
         xor rax, rax
-        mov al, ">"
+        mov al, " "
         stosw
         mov rax, rbx                     ; Restore RAX
 
