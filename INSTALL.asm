@@ -754,7 +754,7 @@ e6_uefi_print_rax_dec_padded:
         ; For the initial zeros, put a space character in the print buffer
         mov rbx, rax                     ; Quick preservation of RAX before we continue
         xor rax, rax
-        mov al, " "
+        mov al, ">"
         stosw
         mov rax, rbx                     ; Restore RAX
 
