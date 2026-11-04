@@ -1,3 +1,7 @@
+Research
+1. What does the TSS Register do?
+2. Search Jump Table vs System Calls
+
 'E6BINARY' anywhere within the first 65536 bytes.
 
 # Installer

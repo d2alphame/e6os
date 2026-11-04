@@ -41,34 +41,35 @@ HEADER_START:
 STANDARD_HEADER:
     .DOS_SIGNATURE:              db "MZ"                                                             ; DOS Signature. This is required
     .GB:                         db __utf16__ `GB\0`                                                 ; Needed for when it's time to print disk sizes.
-        align 8
-        .EFI_BLOCK_IO_PROTOCOL_GUID:
-            dd 0x964E5B21
-            dw 0x6459
-            dw 0x11D2
-            db 0x8E, 0x39, 0x00, 0xA0, 0xC9, 0x69, 0x72, 0x3B
+    
+    align 8
+    .EFI_BLOCK_IO_PROTOCOL_GUID:
+        dd 0x964E5B21
+        dw 0x6459
+        dw 0x11D2
+        db 0x8E, 0x39, 0x00, 0xA0, 0xC9, 0x69, 0x72, 0x3B
 
-        ; A DOS stub should normally be here but uefi doesn't need it, so this will be filled
-        ; with something a bit more useful.
-        .pre_start:
-            ; We begin by extracting all the information that we need and storing them.
-            ; Begin by preserving the following 2 registers
-            push rbx
-            push rbp
+    ; A DOS stub should normally be here but uefi doesn't need it, so this will be filled
+    ; with something a bit more useful.
+    .pre_start:
+        ; We begin by extracting all the information that we need and storing them.
+        ; Begin by preserving the following 2 registers
+        push rbx
+        push rbp
 
-            lea rbp, [BSS.EFI]                                       ; We're going to store the efi image handle
-            mov [rbp + efi.IMAGE_HANDLE], rcx                        ; Store the efi image handle
-            mov [rbp + efi.SYSTEM_TABLE], rdx                                       ; Store the system table
+        lea rbp, [BSS.EFI]                                       ; We're going to store the efi image handle
+        mov [rbp + efi.IMAGE_HANDLE], rcx                        ; Store the efi image handle
+        mov [rbp + efi.SYSTEM_TABLE], rdx                                       ; Store the system table
 
-            ; Point to the simple text output protocol and also save it
-            add rdx, EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL 
-            mov rdx, [rdx]
-            push rdx                                                  ; Preserve Simple Text Output Protocol on the stack
-            mov [rbp + efi.SIMPLE_TEXT_OUTPUT_PROTOCOL], rdx          ; Store the Simple Text Output Protocol
+        ; Point to the simple text output protocol and also save it
+        add rdx, EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL 
+        mov rdx, [rdx]
+        push rdx                                                  ; Preserve Simple Text Output Protocol on the stack
+        mov [rbp + efi.SIMPLE_TEXT_OUTPUT_PROTOCOL], rdx          ; Store the Simple Text Output Protocol
 
-            jmp DATA_DIRECTORIES.pre_start_continue                   ; Jump to the rest of the pre-start code
+        jmp DATA_DIRECTORIES.pre_start_continue                   ; Jump to the rest of the pre-start code
 
-        times 60 - ($ - STANDARD_HEADER) db 0                                                        ; Pad the DOS stub up to 60 bytes
+    times 60 - ($ - STANDARD_HEADER) db 0                                                        ; Pad the DOS stub up to 60 bytes
     
     .SIGNATURE_POINTER:          dd .PE_SIGNATURE - START                                            ; Points at the PE Signature
     .PE_SIGNATURE:               db 'PE', 0x00, 0x00                                                 ; This is the pe signature. The characters 'PE' followed by 2 null bytes
@@ -123,7 +124,7 @@ OPTIONAL_HEADER_START:
     ; us 32 bytes we can use. Loader flags also gives us an additional 4 bytes that makes a total of 36 bytes for use.
     .BOOT_MESSAGE_CONT:              db __utf16__ `0 INSTALLER\r\n\0`  ; Continuation of the installer boot message
     .NEWLINE:                        db __utf16__ `\r\n\0`             ; For when it's time to print new line
-        times 36 - ($ - .BOOT_MESSAGE_CONT) db 0                       ; Padd with zeros up to 32 bytes
+        times 36 - ($ - .BOOT_MESSAGE_CONT) db 0                       ; Padd with zeros up to 36 bytes
 
     ; .STACK_RESERVE_SIZE:         dq 0x200000                         ; Reserve 2MB for the stack... I guess...
     ; .STACK_COMMIT_SIZE:          dq 0x1000                           ; Commit 4kb of the stack
@@ -228,7 +229,8 @@ SECTION_HEADERS:
             dq 100
             dq 10
             dq 1
-        count_powers_of_10 equ ($ - .powers_of_10) >> 3
+        count_powers_of_10     equ ($ - .powers_of_10) >> 3
+        highest_power_of_10    equ count_powers_of_10 - 1
 
         .test_string: db __utf16__ `This is a test\0`      ; String for doing tests during development.
 
@@ -240,6 +242,11 @@ HEADER_END:
 CODE:
 EntryPoint:
     call STANDARD_HEADER.pre_start
+
+    mov rax, highest_power_of_10
+    call e6_uefi_print_rax_dec
+    jmp $
+
 
     ; Get the pointer to the boot services table. We start by grabbing the systems table. From the systems table we can
     ; get the boot services table.
@@ -267,7 +274,7 @@ EntryPoint:
     lea rdi, [BSS.handle_buffer]                             ; The fifth parameter which will be on the stack
     mov [rsp + 32], rdi                                      ; Put that fifth parameter on the stack
     call rbx
-    add rsp, 48                  ; Remember to restore the stack upon return
+    add rsp, 48                                              ; Remember to restore the stack upon return
 
     ; RAX Should be 0 on success 
     test rax, rax
@@ -597,11 +604,11 @@ e6_uefi_print_fraction:
 
     .continue:
     ; Do this if RDX is greater than 19, otherwise just continue as normal if it's less
-    cmp rdx, 19
-    jna .not_too_large                          ; RDX is less than or equal to 19
+    cmp rdx, highest_power_of_10
+    jna .not_too_large                          ; RDX is less than or equal to 19, i.e. the highest power of 10 that can be handled
     
     mov r12, rdx
-    sub r12, 20                                 ; Figure out the number of zeros just after the decimal point before dividing by 10^19
+    sub r12, count_powers_of_10                 ; Figure out the number of zeros just after the decimal point before dividing by 10^19
     
     xor rax, rax                                ; If RDX is greater than 19, then the integer of the result is always 0 
     call e6_uefi_print_rax_dec                  ; Go print the integer part
@@ -611,7 +618,7 @@ e6_uefi_print_fraction:
     jmp .integer_already_printed
 
     .not_too_large:
-    mov r9, 19                                  ; We have to do this dance because we can't do reverse subtraction. See the instruction that follows.
+    mov r9, highest_power_of_10                 ; We have to do this dance because we can't do reverse subtraction. See the instruction that follows.
     sub r9, rdx                                 ; Now we have the index of the power of 10 to divide by stored in R9
 
     ; Point RSI at the power of 10 to start dividing with. We have a powers of 10 table
@@ -700,8 +707,18 @@ e6_uefi_print_fraction:
 ; In RAX: The number to print
 ; In RCX: The maximum of digits to print. This is the amount of screen space the number should occupy.
 ;
-; In other words leading, insignificant zeros are padded with spaces.
-; Example. If RAX = 192, and RCX = 5, this prints [  ]192 (that's 2 spaces followed by the digits 192.)
+; In other words leading, insignificant zeros are replaced with padding spaces.
+; Example. If RAX = 192, and RCX = 5, this prints [  ]192 (that's 2 spaces followed by the digits 192)
+; Another example. If RAX = 1536, and RCX = 4, this prints []1536 (that's the digits 1536 not preceded by any spaces)
+; This will be useful for formatting table-like content with numbers
+e6_uefi_print_rax_dec_padded:
+
+    ; 1. Clear the print buffer
+    ; 2. Calculate the number of spaces to be printed
+    ; 3. Print the appropriate number of spaces
+    ; 4. Print the number in Decimal
+
+    ; Check that that number passed in RAX is less than 10^(RCX + 1)
 
 
 
@@ -845,6 +862,12 @@ BSS:
     ; know anyone who would find that level of precision useful.
 
     .rax_fraction_string:             resb 64
+
+
+    ; This is for printing decimal numbers padded with spaces. This is for a maximum of 19 padding spaces. At 2 bytes
+    ; per space character this makes 38 bytes. The extra 2 bytes is for the terminating null-character.
+
+    .rax_padded_decimal_string:       resb 40
 
 
     ; This is for buffering a line of memory before printing.
