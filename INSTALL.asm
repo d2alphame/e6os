@@ -485,9 +485,6 @@ e6_uefi_print_rax_dec:
     xor rax, rax
     rep stosb
 
-    ; Ensure consecutive zeros is set to 1
-    ; lea r9, [OPTIONAL_HEADER_START.CONSEC_ZEROS]
-    ; mov byte [r9], 0x01
     mov r9, 0x01                    ; Use the R9 register for tracking consecutive zeros. Clear this to zero when a non-zero number is encountered.
 
     mov rax, rdx                    ; Restore RAX from RDX
@@ -715,28 +712,86 @@ e6_uefi_print_rax_dec_padded:
 
     mov r8, rax     ; Preserve RAX in R8
     mov r9, rcx     ; Preserve RCX in R9
+    lea r11, [BSS.rax_padded_decimal_string]
+
 
     ; 1. Clear the print buffer
     ; 2. Calculate the number of spaces to be printed
     ; 3. Print the appropriate number of spaces
     ; 4. Print the number in Decimal
 
-    ; Check that the number passed in RAX is less than 10^(RCX+)
+    ; Check that the number passed in RAX is less than 10^(RCX)
     mov rdx, highest_power_of_10
-    inc rcx
     sub rdx, rcx
+    
+    ; Point RSI to the highest power of 10 to start dividing by. 
     lea rsi, [EXTRAS.powers_of_10]
-    mov rax, [rsi + rdx * 8]
+    shl rdx, 3
+    add rsi, rdx
+    mov rax, [rsi]
     cmp r8, rax
     jnb .invalid_rax_parameter
 
     ; Clear off the print buffer with nulls.
-    lea rdi, [BSS.rax_padded_decimal_string]
+    mov rdi, r11
     mov rcx, 40
     xor rax, rax
     rep stosb
 
-    .invalid_rax_parameter
+    mov rdi, r11                    ; Reset RDI to the beginning of the print buffer
+
+    ; At this point, RSI still contains the address of the power of 10 to start dividing by in the powers_of_10 table
+    .loop_divide:
+        lodsq                       ; Get the power of 10 to divide by
+        mov r10, rax
+        mov rax, r8
+        xor rdx, rdx
+        div r10
+        mov r8, rdx
+        cmp rax, 0                       ; If the division leads to a non-zero integer then exit this loop to print the padding spaces and the number's digits
+        jnz .loop_divide_end
+
+        ; For the initial zeros, put a space character in the print buffer
+        mov rbx, rax                     ; Quick preservation of RAX before we continue
+        xor rax, rax
+        mov al, " "
+        stosw
+        mov rax, rbx                     ; Restore RAX
+
+        cmp r10, 1                       ; If r10 = 1, it means we just finished processing the last power of 10, i.e. 10^0
+        jne .loop_divide
+
+    .loop_divide_end:
+
+    lea rbx, [DATA_DIRECTORIES.HEX_DIGITS]
+
+    ; Write down the integer we calculated
+    and rax, 0xFF
+    xlatb
+    stosw
+    cmp r10, 1                      ; Finish the loop if we've already reached the last power of 10 (i.e. 10^0)
+    je .loop_non_zeros_end
+    .loop_non_zeros:
+        lodsq
+        mov r10, rax
+        mov rax, r8
+        xor rdx, rdx
+        div r10
+        mov r8, rdx
+        and rax, 0xFF
+        xlatb
+        stosw
+        cmp r10, 1
+        jne .loop_non_zeros
+    .loop_non_zeros_end:
+
+    mov rsi, r11
+    call e6_uefi_print_uefi_string
+
+    jmp $
+
+
+    .invalid_rax_parameter:
 
     .cleanup:
 
