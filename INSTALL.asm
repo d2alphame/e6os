@@ -243,9 +243,9 @@ CODE:
 EntryPoint:
     call STANDARD_HEADER.pre_start
 
-    mov rax, highest_power_of_10
-    call e6_uefi_print_rax_dec
-    jmp $
+    mov rax, 1024
+    mov rcx, 6
+    call e6_uefi_print_rax_dec_padded
 
 
     ; Get the pointer to the boot services table. We start by grabbing the systems table. From the systems table we can
@@ -713,13 +713,34 @@ e6_uefi_print_fraction:
 ; This will be useful for formatting table-like content with numbers
 e6_uefi_print_rax_dec_padded:
 
+    mov r8, rax     ; Preserve RAX in R8
+    mov r9, rcx     ; Preserve RCX in R9
+
     ; 1. Clear the print buffer
     ; 2. Calculate the number of spaces to be printed
     ; 3. Print the appropriate number of spaces
     ; 4. Print the number in Decimal
 
-    ; Check that that number passed in RAX is less than 10^(RCX + 1)
+    ; Check that the number passed in RAX is less than 10^(RCX+)
+    mov rdx, highest_power_of_10
+    inc rcx
+    sub rdx, rcx
+    lea rsi, [EXTRAS.powers_of_10]
+    mov rax, [rsi + rdx * 8]
+    cmp r8, rax
+    jnb .invalid_rax_parameter
 
+    ; Clear off the print buffer with nulls.
+    lea rdi, [BSS.rax_padded_decimal_string]
+    mov rcx, 40
+    xor rax, rax
+    rep stosb
+
+    .invalid_rax_parameter
+
+    .cleanup:
+
+    ret
 
 
 

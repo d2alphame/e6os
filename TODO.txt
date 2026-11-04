@@ -1,6 +1,7 @@
 Research
 1. What does the TSS Register do?
 2. Search Jump Table vs System Calls
+3. How is automated os installation done on systems with multiple storage devices and the os is required to be installed on one.
 
 'E6BINARY' anywhere within the first 65536 bytes.
 
